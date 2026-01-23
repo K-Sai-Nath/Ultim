@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "Ultim",
+    "slug": "Ultim",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "ultim",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sai-nath.Ultim"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ff7b00"
+      },
+      "softwareKeyboardLayoutMode": "pan",
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.sai_nath.Ultim"
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ff7b00"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ded5a82b-34ce-4976-92bb-b3b067519892"
+      }
+    }
+  }
+}
