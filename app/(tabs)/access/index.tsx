@@ -18,12 +18,12 @@ const ACTIVITIES = [
   {
     id: "badminton",
     title: "Badminton Court",
-    image: "https://images.unsplash.com/photo-1599058917212-d750089bc07c",
+    image: "https://loremflickr.com/400/400/badminton",
   },
   {
     id: "swimming",
     title: "Swimming Pool",
-    image: "https://images.unsplash.com/photo-1530549387789-4c1017266634",
+    image: "https://loremflickr.com/400/400/swimming",
   },
   {
     id: "yoga",
@@ -79,7 +79,7 @@ export default function AccessScreen() {
               key={item.id}
               title={item.title}
               image={item.image}
-              onPress={() => router.push(`/(stack)/qr/${item.id}`)}
+              onPress={() => router.push(`/(stack)/activites/${item.id}`)}
             />
           ))}
         </View>
@@ -139,7 +139,7 @@ function ActivityCard({
           activeOpacity={0.85}
           className="mt-2 px-4 py-2 bg-primary rounded-lg self-start"
         >
-          <Text className="text-sm font-bold text-white">Book Now</Text>
+          <Text className="text-sm font-bold text-white">View Venues</Text>
         </TouchableOpacity>
       </View>
     </View>

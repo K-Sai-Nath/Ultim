@@ -4,7 +4,7 @@
     "slug": "Ultim",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/ULTIM_LOGO.png",
+    "icon": "./assets/images/ULTIM.png",
     "scheme": "ultim",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -23,7 +23,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/ULTIM_LOGO.png",
+      "favicon": "./assets/images/ULTIM.png",
       "bundler": "metro"
     },
     "plugins": [
@@ -31,7 +31,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/ULTIM_LOGO.png",
+          "image": "./assets/images/ULTIM.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ff7b00"

@@ -100,7 +100,7 @@ export default function ProfileScreen() {
             label="Subscription Details"
             iconColor={iconPrimary}
             chevronColor={iconSecondary}
-            onPress={() => Alert.alert("Clicked on Subscription details")}
+            onPress={() => router.push("/(stack)/subscription")}
           />
           <ProfileRow
             icon="notifications"

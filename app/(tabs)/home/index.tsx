@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const user = {
   name: "Alex",
   credits: 120,
+  planCycle: "Monthly", // ← NEW
 };
 
 const todayBookings = {
@@ -84,9 +85,15 @@ export default function HomeScreen() {
                 </Text>
               </View>
 
+              {/* Bottom Row */}
               <View className="mt-4 flex-row items-center justify-between">
                 <Text className="text-xs italic text-text-secondary-light dark:text-text-secondary-dark">
                   Next billing: Oct 12
+                </Text>
+
+                {/* Monthly / Yearly */}
+                <Text className="text-xs font-semibold text-primary">
+                  {user.planCycle}
                 </Text>
               </View>
             </View>
@@ -124,7 +131,6 @@ export default function HomeScreen() {
             Today’s Booking
           </Text>
 
-          {/* Gym */}
           <TodayBookingCard
             title="General Gym Session"
             location="Main Fitness Center, Floor 2"
@@ -134,14 +140,13 @@ export default function HomeScreen() {
             onViewDetails={() => router.push("/(stack)/qr/1")}
           />
 
-          {/* Badminton */}
           {todayBookings.badminton.booked && (
             <TodayBookingCard
               title="Badminton Session"
               time={todayBookings.badminton.time}
               location="Court 2"
               booked
-              image="https://images.unsplash.com/photo-1558611848-73f7eb4001a1"
+              image="https://loremflickr.com/400/400/badminton"
               onGenerateQR={() => {}}
               onViewQR={() => router.push("/(stack)/qr/1")}
             />
@@ -198,14 +203,12 @@ function TodayBookingCard({
     >
       {/* Top content */}
       <View className="flex-row p-5 gap-4">
-        {/* Image */}
         <Image
           source={{ uri: image }}
           className="w-24 h-24 rounded-xl"
           resizeMode="cover"
         />
 
-        {/* Details */}
         <View className="flex-1 justify-center">
           {time && (
             <View className="self-start mb-1 px-2.5 py-1 rounded-full bg-primary/10">
@@ -219,7 +222,6 @@ function TodayBookingCard({
             {title}
           </Text>
 
-          {/* Location */}
           <View className="flex-row items-center gap-1.5 mt-1">
             <MaterialIcons name="location-on" size={14} color="#9ca3af" />
             <Text className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
@@ -229,10 +231,8 @@ function TodayBookingCard({
         </View>
       </View>
 
-      {/* Divider */}
       <View className="h-px bg-border-light dark:bg-border-dark mx-5" />
 
-      {/* Footer */}
       <View className="flex-row items-center justify-between px-5 py-4">
         {booked ? (
           <>
