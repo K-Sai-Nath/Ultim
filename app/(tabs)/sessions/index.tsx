@@ -154,7 +154,7 @@ export default function BookingsScreen() {
                 secondaryAction={activeTab === "upcoming" ? "Cancel" : null}
                 onPrimaryPress={() => {
                   if (activeTab === "upcoming") {
-                    router.push(`/(stack)/booking/${item.id}`);
+                    router.push(`/(stack)/qr/${item.id}`);
                   }
                 }}
                 onSecondaryPress={() => {

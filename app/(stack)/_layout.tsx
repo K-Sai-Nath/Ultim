@@ -9,7 +9,9 @@ export default function RootLayout() {
       <Stack.Screen name="helpCenter" options={{ headerShown: false }} />
       <Stack.Screen name="contactSupport" options={{ headerShown: false }} />
       <Stack.Screen name="paymentMethods" options={{ headerShown: false }} />
-      <Stack.Screen name="booking" options={{ headerShown: false }} />
+      <Stack.Screen name="qr" options={{ headerShown: false }} />
+      <Stack.Screen name="activites" options={{ headerShown: false }} />
+      <Stack.Screen name="subscription" options={{ headerShown: false }} />
     </Stack>
   );
 }

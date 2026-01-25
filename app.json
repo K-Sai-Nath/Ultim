@@ -4,7 +4,7 @@
     "slug": "Ultim",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/ULTIM_LOGO.png",
     "scheme": "ultim",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -19,11 +19,11 @@
       "softwareKeyboardLayoutMode": "pan",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.sai_nath.Ultim"
+      "package": "com.sai_nath.Ultim",
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png",
+      "favicon": "./assets/images/ULTIM_LOGO.png",
       "bundler": "metro"
     },
     "plugins": [
@@ -31,7 +31,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/ULTIM_LOGO.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ff7b00"
