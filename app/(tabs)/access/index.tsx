@@ -79,7 +79,9 @@ export default function AccessScreen() {
               key={item.id}
               title={item.title}
               image={item.image}
-              onPress={() => router.push(`/(stack)/activites/${item.id}`)}
+              onPress={() =>
+                router.push(`/(stack)/activites/${item.id}/book/${item.id}`)
+              }
             />
           ))}
         </View>
@@ -139,7 +141,7 @@ function ActivityCard({
           activeOpacity={0.85}
           className="mt-2 px-4 py-2 bg-primary rounded-lg self-start"
         >
-          <Text className="text-sm font-bold text-white">View Venues</Text>
+          <Text className="text-sm font-bold text-white">Book Now</Text>
         </TouchableOpacity>
       </View>
     </View>

@@ -49,7 +49,7 @@ export default function AuthScreen() {
 
   const handleLogin = () => {
     if (!validate()) return;
-    router.push("/(tabs)/home");
+    router.replace("/(tabs)/home");
   };
 
   return (
@@ -79,7 +79,7 @@ export default function AuthScreen() {
           </View>
 
           {/* Form */}
-          <View className="gap-5">
+          <View className="gap-3">
             <Input
               label="Email Address"
               icon="email"
