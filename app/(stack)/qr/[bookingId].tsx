@@ -31,7 +31,7 @@ export default function BookingAccessScreen() {
 
   if (!booking) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center">
+      <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark items-center justify-center">
         <Text className="text-text-secondary-light dark:text-text-secondary-dark">
           Booking not found
         </Text>

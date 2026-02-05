@@ -2,8 +2,16 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
 import React from "react";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  Dimensions,
+  Image,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { SwiperFlatList } from "react-native-swiper-flatlist";
 
 /* ---------------------------------- */
 /* MOCK DATA                           */
@@ -12,8 +20,56 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const user = {
   name: "Alex",
   credits: 120,
-  planCycle: "Monthly", // ← NEW
+  planCycle: "Monthly",
 };
+
+const banners = [
+  {
+    id: "1",
+    image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438",
+    title: "Inter-Club Badminton Championship",
+    date: "12 Oct 2026",
+  },
+  {
+    id: "2",
+    image: "https://images.unsplash.com/photo-1558611848-73f7eb4001a1",
+    title: "Fitness Bootcamp",
+    date: "18 Oct 2026",
+  },
+  {
+    id: "3",
+    image: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b",
+    title: "Yoga & Wellness Retreat",
+    date: "25 Oct 2026",
+  },
+];
+
+const tryNewItems = [
+  {
+    id: "1",
+    title: "Swimming",
+    venue: "Aqua Sports Complex",
+    location: "Block A • Pool Area",
+    credits: 120,
+    image: "https://images.unsplash.com/photo-1546519638-68e109498ffc",
+  },
+  {
+    id: "2",
+    title: "Zumba",
+    venue: "Dance Studio",
+    location: "Fitness Floor • Hall 3",
+    credits: 80,
+    image: "https://images.unsplash.com/photo-1518611012118-696072aa579a",
+  },
+  {
+    id: "3",
+    title: "CrossFit",
+    venue: "Iron Box Arena",
+    location: "Ground Floor • Zone C",
+    credits: 150,
+    image: "https://images.unsplash.com/photo-1517964603305-11c0f6f66012",
+  },
+];
 
 const todayBookings = {
   gym: {
@@ -33,7 +89,24 @@ export default function HomeScreen() {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const handleTryNewNavigation = (title: string) => {
+    switch (title) {
+      case "Swimming":
+        router.push("/(stack)/activites/swimming/book/swimming");
+        break;
 
+      case "Yoga":
+        router.push("/(stack)/activites/yoga/book/yoga");
+        break;
+
+      case "Badminton":
+        router.push("/(stack)/activites/badminton/book/badminton");
+        break;
+
+      default:
+        router.push("/(tabs)/access");
+    }
+  };
   return (
     <SafeAreaView
       edges={["top"]}
@@ -42,14 +115,14 @@ export default function HomeScreen() {
         backgroundColor: isDark ? "#0f0f0f" : "#ffffff",
       }}
     >
-      {/* Header */}
+      {/* HEADER */}
       <View className="flex-row items-center justify-between px-4 py-3">
         <View className="ml-3">
           <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
             Welcome back, {user.name}
           </Text>
-          <Text className="text-xs font-bold uppercase tracking-wider text-primary">
-            Premium Member
+          <Text className="text-xs font-bold tracking-wider text-primary">
+            OneAll Arena
           </Text>
         </View>
 
@@ -66,66 +139,66 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Available Credits */}
-        <View className="px-4 mt-4">
-          <View className="relative overflow-hidden rounded-xl bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark">
-            <View className="absolute -top-16 -right-16 w-40 h-40 rounded-full bg-primary/10" />
+        {/* BANNER SLIDER */}
+        <BannerSlider />
 
-            <View className="p-6">
-              <Text className="text-sm font-bold uppercase text-text-secondary-light dark:text-text-secondary-dark">
-                Available Credits
-              </Text>
-
-              <View className="flex-row items-end gap-1 mt-1">
-                <Text className="text-4xl font-bold text-text-primary-light dark:text-text-primary-dark">
-                  {user.credits}
-                </Text>
-                <Text className="text-sm text-text-secondary-light dark:text-text-secondary-dark mb-1">
-                  pts
-                </Text>
-              </View>
-
-              {/* Bottom Row */}
-              <View className="mt-4 flex-row items-center justify-between">
-                <Text className="text-xs italic text-text-secondary-light dark:text-text-secondary-dark">
-                  Next billing: Oct 12
-                </Text>
-
-                {/* Monthly / Yearly */}
-                <Text className="text-xs font-semibold text-primary">
-                  {user.planCycle}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Quick Actions */}
+        {/* FITNESS CATEGORIES */}
         <View className="px-4 mt-8">
           <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark mb-3">
-            Quick Actions
+            Explore Categories
           </Text>
 
           <View className="flex-row gap-3">
-            <QuickAction
-              icon="event-available"
-              label="Book Slot"
-              onPressEvent={() => router.push("/(tabs)/access")}
+            <FitnessCard
+              title="Fitness"
+              image="https://images.unsplash.com/photo-1558611848-73f7eb4001a1"
+              onPress={() => router.push("/(stack)/plans/fitness")}
             />
-            <QuickAction
-              icon="qr-code"
-              label="My Bookings"
-              onPressEvent={() => router.push("/(tabs)/sessions")}
+
+            <FitnessCard
+              title="Sports"
+              image="https://images.unsplash.com/photo-1517649763962-0c623066013b"
+              onPress={() => router.push("/(stack)/plans/sports")}
             />
-            <QuickAction
-              icon="account-balance-wallet"
-              label="Wallet"
-              onPressEvent={() => router.push("/(stack)/subscription")}
+
+            <FitnessCard
+              title="Health"
+              image="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b"
+              onPress={() => router.push("/(stack)/plans/health")}
             />
           </View>
         </View>
 
-        {/* Today's Booking */}
+        {/* TRY SOMETHING NEW */}
+        <View className="mt-10">
+          <View className="px-4 mb-3">
+            <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
+              Try Something New
+            </Text>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16 }}
+          >
+            {tryNewItems.map((item) => (
+              <TryNewCard
+                key={item.id}
+                title={item.title}
+                venue={item.venue}
+                location={item.location}
+                credits={item.credits}
+                image={item.image}
+                onPress={() => {
+                  handleTryNewNavigation(item.title);
+                }}
+              />
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* TODAY BOOKING */}
         <View className="px-4 mt-10 pb-8">
           <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark mb-3">
             Today’s Booking
@@ -136,8 +209,8 @@ export default function HomeScreen() {
             location="Main Fitness Center, Floor 2"
             booked={todayBookings.gym.booked}
             image="https://images.unsplash.com/photo-1558611848-73f7eb4001a1"
-            onGenerateQR={() => router.push("/access")}
-            onViewDetails={() => router.push("/(stack)/qr/1")}
+            onGenerateQR={() => router.push("/(stack)/qr/1")}
+            onViewQR={() => router.push("/(stack)/qr/1")}
           />
 
           {todayBookings.badminton.booked && (
@@ -147,7 +220,6 @@ export default function HomeScreen() {
               location="Court 2"
               booked
               image="https://loremflickr.com/400/400/badminton"
-              onGenerateQR={() => {}}
               onViewQR={() => router.push("/(stack)/qr/1")}
             />
           )}
@@ -161,18 +233,138 @@ export default function HomeScreen() {
 /* COMPONENTS                          */
 /* ---------------------------------- */
 
-function QuickAction({ icon, label, onPressEvent }: any) {
+function BannerSlider() {
+  const { width } = Dimensions.get("window");
+  return (
+    <View className="mt-4">
+      <SwiperFlatList
+        autoplay
+        autoplayDelay={3}
+        autoplayLoop
+        showPagination
+        paginationActiveColor="#ff7b00"
+        paginationDefaultColor="#d1d5db"
+        paginationStyle={{
+          bottom: -5,
+        }}
+        paginationStyleItem={{
+          width: 6,
+          height: 6,
+          marginHorizontal: 4,
+        }}
+        data={banners}
+        renderItem={({ item }) => (
+          <View style={{ width }}>
+            <View
+              className="mx-4 rounded-2xl overflow-hidden"
+              style={{ height: 176 }}
+            >
+              {/* IMAGE */}
+              <Image
+                source={{ uri: item.image }}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode="cover"
+              />
+
+              {/* OVERLAY */}
+              <View className="absolute inset-0 bg-black/35" />
+
+              {/* TEXT */}
+              <View className="absolute bottom-4 left-4 right-4">
+                <Text className="text-white text-base font-extrabold">
+                  {item.title}
+                </Text>
+                <Text className="text-white/80 text-xs mt-1">
+                  📅 {item.date}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+      />
+    </View>
+  );
+}
+
+function FitnessCard({ title, image, onPress }: any) {
   return (
     <TouchableOpacity
-      onPress={onPressEvent}
-      className="flex-1 aspect-square rounded-xl bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark items-center justify-center gap-2"
+      onPress={onPress}
+      activeOpacity={0.85}
+      className="flex-1 h-36 rounded-2xl overflow-hidden"
+      style={{
+        shadowColor: "#000",
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 6 },
+        elevation: 6,
+      }}
     >
-      <View className="w-12 h-12 rounded-lg bg-primary/10 items-center justify-center">
-        <MaterialIcons name={icon} size={26} color="#ff7b00" />
+      <Image
+        source={{ uri: image }}
+        className="absolute inset-0 w-full h-full"
+        resizeMode="cover"
+      />
+      <View className="absolute inset-0 bg-black/35" />
+      <View className="flex-1 justify-end p-4">
+        <Text className="text-white text-base font-extrabold">{title}</Text>
       </View>
-      <Text className="text-xs font-bold text-text-primary-light dark:text-text-primary-dark">
-        {label}
-      </Text>
+    </TouchableOpacity>
+  );
+}
+
+function TryNewCard({ title, venue, location, image, credits, onPress }: any) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.9}
+      className="w-72 mr-5 mb-1 rounded-2xl bg-card-light dark:bg-card-dark overflow-hidden"
+      style={{
+        shadowColor: "#000",
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 8 },
+        elevation: 2,
+      }}
+    >
+      {/* IMAGE SECTION */}
+      <Image
+        source={{ uri: image }}
+        className="w-full h-36"
+        resizeMode="cover"
+      />
+
+      {/* INFO SECTION */}
+      <View className="p-2">
+        {/* Title */}
+        <Text className="text-base font-extrabold text-text-primary-light dark:text-text-primary-dark">
+          {title}
+        </Text>
+
+        {/* Venue */}
+        <Text className="text-sm font-semibold text-text-secondary-light dark:text-text-secondary-dark mt-0.5">
+          {venue}
+        </Text>
+
+        {/* Location */}
+        <View className="flex-row items-center gap-1 mt-1">
+          <MaterialIcons name="location-on" size={14} color="#9ca3af" />
+          <Text className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
+            {location}
+          </Text>
+        </View>
+
+        {/* CREDITS */}
+        <View className="mt-1 self-start  py-1">
+          <Text className="text-xs font-bold text-primary">
+            {credits} Credits
+          </Text>
+        </View>
+
+        {/* CTA */}
+        <View className="mt-3 self-start px-3 py-1.5 rounded-full bg-primary/10">
+          <Text className="text-xs font-bold text-primary">Explore →</Text>
+        </View>
+      </View>
     </TouchableOpacity>
   );
 }
@@ -187,21 +379,7 @@ function TodayBookingCard({
   onGenerateQR,
 }: any) {
   return (
-    <View
-      className="
-        mb-6 rounded-2xl overflow-hidden
-        bg-card-light dark:bg-card-dark
-        border border-border-light dark:border-border-dark
-      "
-      style={{
-        shadowColor: "#000",
-        shadowOpacity: 0.05,
-        shadowRadius: 14,
-        shadowOffset: { width: 0, height: 8 },
-        elevation: 3,
-      }}
-    >
-      {/* Top content */}
+    <View className="mb-6 rounded-2xl overflow-hidden  border border-border-light dark:border-border-dark">
       <View className="flex-row p-5 gap-4">
         <Image
           source={{ uri: image }}
@@ -228,14 +406,22 @@ function TodayBookingCard({
               {location}
             </Text>
           </View>
+
+          {!booked && (
+            <TouchableOpacity
+              onPress={onGenerateQR}
+              className="mt-3 self-start px-5 py-2.5 rounded-xl bg-primary"
+            >
+              <Text className="text-xs font-bold text-white">Generate QR</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
-      <View className="h-px bg-border-light dark:bg-border-dark mx-5" />
-
-      <View className="flex-row items-center justify-between px-5 py-4">
-        {booked ? (
-          <>
+      {booked && (
+        <>
+          <View className="h-px bg-border-light dark:bg-border-dark mx-5" />
+          <View className="flex-row items-center justify-between px-5 py-4">
             <View className="flex-row items-center gap-2">
               <View className="w-2.5 h-2.5 rounded-full bg-green-500" />
               <Text className="text-xs font-semibold text-text-secondary-light dark:text-text-secondary-dark">
@@ -245,24 +431,13 @@ function TodayBookingCard({
 
             <TouchableOpacity
               onPress={onViewQR}
-              activeOpacity={0.85}
               className="px-4 py-2 rounded-xl bg-primary/10"
             >
               <Text className="text-xs font-bold text-primary">View QR →</Text>
             </TouchableOpacity>
-          </>
-        ) : (
-          <TouchableOpacity
-            onPress={onGenerateQR}
-            activeOpacity={0.9}
-            className="ml-auto px-5 py-2.5 rounded-xl bg-primary"
-          >
-            <Text className="text-xs font-bold text-white tracking-wide">
-              Generate QR
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
+          </View>
+        </>
+      )}
     </View>
   );
 }

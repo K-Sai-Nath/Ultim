@@ -217,24 +217,36 @@ function BookingCard({
 }: any) {
   return (
     <View className="mb-5 rounded-xl bg-card-light dark:bg-card-dark p-4 border border-border-light dark:border-border-dark">
-      <View className="flex-row gap-4">
-        <View className="flex-1">
-          <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
-            {data.title}
-          </Text>
-          <Text className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
-            {data.subtitle}
-          </Text>
+      {/* ROW */}
+      <View className="flex-row items-stretch gap-4">
+        {/* LEFT IMAGE — FULL HEIGHT */}
+        <Image
+          source={{ uri: data.image }}
+          className=" rounded-lg"
+          resizeMode="cover"
+          style={{ height: "100%", width: "40%" }}
+        />
 
-          <View className="mt-3 gap-2">
-            <InfoRow icon="calendar-today" text={data.date} />
-            <InfoRow icon="location-on" text={data.location} />
+        {/* RIGHT CONTENT — STRETCH */}
+        <View className="flex-1 justify-between">
+          <View>
+            <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
+              {data.title}
+            </Text>
+
+            <Text className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
+              {data.subtitle}
+            </Text>
+
+            <View className="mt-3 gap-2">
+              <InfoRow icon="calendar-today" text={data.date} />
+              <InfoRow icon="location-on" text={data.location} />
+            </View>
           </View>
         </View>
-
-        <Image source={{ uri: data.image }} className="w-24 h-24 rounded-lg" />
       </View>
 
+      {/* ACTIONS */}
       {(primaryAction || secondaryAction) && (
         <View className="mt-4 flex-row gap-3 border-t border-border-light dark:border-border-dark pt-3">
           {secondaryAction && (

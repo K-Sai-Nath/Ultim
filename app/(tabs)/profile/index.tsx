@@ -109,6 +109,13 @@ export default function ProfileScreen() {
             chevronColor={iconSecondary}
             onPress={() => router.push("/(stack)/notifications")}
           />
+          <ProfileRow
+            icon="receipt-long"
+            label="Transaction History"
+            iconColor={iconPrimary}
+            chevronColor={iconSecondary}
+            onPress={() => router.push("/(stack)/transactions")}
+          />
         </Card>
 
         {/* Support Card */}

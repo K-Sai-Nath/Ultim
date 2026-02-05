@@ -12,6 +12,8 @@ export default function RootLayout() {
       <Stack.Screen name="qr" options={{ headerShown: false }} />
       <Stack.Screen name="activites" options={{ headerShown: false }} />
       <Stack.Screen name="subscription" options={{ headerShown: false }} />
+      <Stack.Screen name="transactions" options={{ headerShown: false }} />
+      <Stack.Screen name="plans" options={{ headerShown: false }} />
     </Stack>
   );
 }
