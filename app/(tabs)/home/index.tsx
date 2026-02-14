@@ -138,13 +138,16 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* BANNER SLIDER */}
         <BannerSlider />
 
         {/* FITNESS CATEGORIES */}
         <View className="px-4 mt-8">
-          <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark mb-3">
+          <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark mb-3 ml-1">
             Explore Categories
           </Text>
 
@@ -172,7 +175,7 @@ export default function HomeScreen() {
         {/* TRY SOMETHING NEW */}
         <View className="mt-10">
           <View className="px-4 mb-3">
-            <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
+            <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark ml-1">
               Try Something New
             </Text>
           </View>
@@ -200,7 +203,7 @@ export default function HomeScreen() {
 
         {/* TODAY BOOKING */}
         <View className="px-4 mt-10 pb-8">
-          <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark mb-3">
+          <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark mb-3 ml-1">
             Today’s Booking
           </Text>
 
@@ -379,7 +382,7 @@ function TodayBookingCard({
   onGenerateQR,
 }: any) {
   return (
-    <View className="mb-6 rounded-2xl overflow-hidden  border border-border-light dark:border-border-dark">
+    <View className="mb-6 rounded-3xl overflow-hidden bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark">
       <View className="flex-row p-5 gap-4">
         <Image
           source={{ uri: image }}

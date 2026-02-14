@@ -131,7 +131,7 @@ export default function BookingsScreen() {
       <ScrollView
         className="flex-1 px-4 pt-4"
         contentContainerStyle={{
-          paddingBottom: 24,
+          paddingBottom: 100,
           flexGrow: data.length === 0 || loading ? 1 : undefined,
         }}
         showsVerticalScrollIndicator={false}

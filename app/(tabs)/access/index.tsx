@@ -70,7 +70,7 @@ export default function AccessScreen() {
       {/* Content */}
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
         className="px-4"
       >
         <View className="gap-4 mt-2">

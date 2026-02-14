@@ -12,7 +12,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: "#ff7b00",
+        primary: "#F97316",
 
         "background-light": "#ffffff",
         "card-light": "#ffffff",
@@ -22,7 +22,7 @@ module.exports = {
 
         "background-dark": "#0f0f0f",
         "card-dark": "#1a1a1a",
-        "border-dark": "#2a2a2a",
+        "border-dark": "#22262B",
         "text-primary-dark": "#f5f5f5",
         "text-secondary-dark": "#a1a1aa",
       },

@@ -63,9 +63,7 @@ export default function AuthScreen() {
           {/* Top Section */}
           <View className="items-center mt-10 mb-8">
             <Image
-              source={{
-                uri: "https://lh3.googleusercontent.com/aida-public/AB6AXuAt2CVXGBaJinw1uoqASnjkZD32KV1P6fScn7J71oiRCHazp75-_RPJV2-7APVmXE807GSM0_-YYXLYaGWXkkxhm2jIHXy2WZOMnWZOeVWdtj_jlIc5ln1wJxj23s9bCYyNCCY6SDsXgCqK1_9zRECD6dsEhLZktjLHyxAzgrHR0SibgM-T7DuRXTa7OCYyoRUSlkwCCUpZjn3TWPG_qtGzHUw1IUe5SFi-kpYaGRtu3aOpxfjetb7syytnUWlbOPM1IY4ZTqPDNfC4",
-              }}
+              source={require("../../assets/images/Login.png")}
               className="h-24 w-24"
               resizeMode="contain"
             />
