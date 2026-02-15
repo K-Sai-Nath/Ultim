@@ -17,7 +17,7 @@ export default function CustomTabBar({
         bottom: 24,
         flexDirection: "row",
         height: 64,
-        borderRadius: 24,
+        borderRadius: 20,
 
         backgroundColor: isDark ? "#1a1a1a" : "#ffffff",
 

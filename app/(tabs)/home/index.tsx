@@ -1,4 +1,4 @@
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
 import React from "react";
@@ -317,55 +317,80 @@ function FitnessCard({ title, image, onPress }: any) {
 }
 
 function TryNewCard({ title, venue, location, image, credits, onPress }: any) {
+  const { colorScheme } = useColorScheme();
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.9}
-      className="w-72 mr-5 mb-1 rounded-2xl bg-card-light dark:bg-card-dark overflow-hidden"
-      style={{
-        shadowColor: "#000",
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 8 },
-        elevation: 2,
-      }}
+      className="w-72 mr-5 mb-1 rounded-3xl 
+        bg-card-light dark:bg-card-dark 
+        border border-border-light dark:border-border-dark 
+        overflow-hidden"
     >
       {/* IMAGE SECTION */}
       <Image
         source={{ uri: image }}
-        className="w-full h-36"
+        className="w-full h-40"
         resizeMode="cover"
       />
 
       {/* INFO SECTION */}
-      <View className="p-2">
+      <View className="p-4">
         {/* Title */}
-        <Text className="text-base font-extrabold text-text-primary-light dark:text-text-primary-dark">
+        <Text
+          className="text-lg font-semibold 
+          text-text-primary-light dark:text-text-primary-dark"
+        >
           {title}
         </Text>
 
         {/* Venue */}
-        <Text className="text-sm font-semibold text-text-secondary-light dark:text-text-secondary-dark mt-0.5">
+        <Text
+          className="text-sm mt-1 
+          text-text-secondary-light dark:text-text-secondary-dark"
+        >
           {venue}
         </Text>
 
         {/* Location */}
-        <View className="flex-row items-center gap-1 mt-1">
-          <MaterialIcons name="location-on" size={14} color="#9ca3af" />
-          <Text className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
+        <View className="flex-row items-center mt-1">
+          <MaterialIcons name="location-on" size={14} color="#9CA3AF" />
+          <Text
+            className="ml-1 text-xs 
+            text-text-secondary-light dark:text-text-secondary-dark"
+          >
             {location}
           </Text>
         </View>
 
-        {/* CREDITS */}
-        <View className="mt-1 self-start  py-1">
-          <Text className="text-xs font-bold text-primary">
-            {credits} Credits
+        {/* Credits + CTA Row */}
+        <View className="flex-row items-center justify-between mt-4">
+          {/* Credits */}
+          <Text className="text-sm font-semibold text-primary">
+            {credits} <Text className="text-xs font-medium">Credits</Text>
           </Text>
-        </View>
 
-        {/* CTA */}
-        <View className="mt-3 self-start px-3 py-1.5 rounded-full bg-primary/10">
-          <Text className="text-xs font-bold text-primary">Explore →</Text>
+          {/* Explore Button */}
+          <View
+            className="px-5 py-2 rounded-full 
+    bg-card-light dark:bg-[#2c2b2b]
+    border border-border-light dark:border-border-dark"
+          >
+            <View className="flex-row items-center gap-1">
+              <Text
+                className="text-sm font-medium
+      text-text-secondary-light dark:text-text-primary-dark"
+              >
+                Explore
+              </Text>
+
+              <Ionicons
+                name="arrow-forward"
+                size={16}
+                color={colorScheme === "dark" ? "#F5F5F5" : "#6B7280"}
+              />
+            </View>
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -381,62 +406,110 @@ function TodayBookingCard({
   onViewQR,
   onGenerateQR,
 }: any) {
+  const { colorScheme } = useColorScheme();
+
   return (
-    <View className="mb-6 rounded-3xl overflow-hidden bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark">
+    <View
+      className="mb-6 rounded-3xl overflow-hidden 
+      bg-card-light dark:bg-card-dark 
+      border border-border-light dark:border-border-dark"
+    >
+      {/* Top Content */}
       <View className="flex-row p-5 gap-4">
         <Image
           source={{ uri: image }}
-          className="w-24 h-24 rounded-xl"
+          className="w-20 h-20 rounded-2xl"
           resizeMode="cover"
         />
 
         <View className="flex-1 justify-center">
+          {/* Time Badge */}
           {time && (
-            <View className="self-start mb-1 px-2.5 py-1 rounded-full bg-primary/10">
-              <Text className="text-[10px] font-bold uppercase text-primary">
+            <View className="self-start mb-2 px-3 py-1 rounded-full bg-primary">
+              <Text className="text-[10px] font-semibold text-black uppercase">
                 {time}
               </Text>
             </View>
           )}
 
-          <Text className="text-lg font-extrabold text-text-primary-light dark:text-text-primary-dark">
+          {/* Title */}
+          <Text
+            className="text-lg font-semibold 
+            text-text-primary-light dark:text-text-primary-dark"
+          >
             {title}
           </Text>
 
-          <View className="flex-row items-center gap-1.5 mt-1">
-            <MaterialIcons name="location-on" size={14} color="#9ca3af" />
-            <Text className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
+          {/* Location */}
+          <View className="flex-row items-center mt-1">
+            <MaterialIcons name="location-on" size={14} color="#9CA3AF" />
+            <Text
+              className="ml-1 text-xs 
+              text-text-secondary-light dark:text-text-secondary-dark"
+            >
               {location}
             </Text>
           </View>
-
-          {!booked && (
-            <TouchableOpacity
-              onPress={onGenerateQR}
-              className="mt-3 self-start px-5 py-2.5 rounded-xl bg-primary"
-            >
-              <Text className="text-xs font-bold text-white">Generate QR</Text>
-            </TouchableOpacity>
-          )}
         </View>
       </View>
 
+      {/* Generate QR (Unbooked) */}
+      {!booked && (
+        <View className="px-5 pb-5">
+          <TouchableOpacity
+            onPress={onGenerateQR}
+            className="w-full py-3 rounded-2xl bg-primary items-center"
+          >
+            <Text className="text-sm font-semibold text-black dark:text-white">
+              Generate QR
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Booked Section */}
       {booked && (
         <>
-          <View className="h-px bg-border-light dark:bg-border-dark mx-5" />
+          <View
+            className="h-px 
+            bg-border-light dark:bg-border-dark 
+            mx-5"
+          />
+
           <View className="flex-row items-center justify-between px-5 py-4">
-            <View className="flex-row items-center gap-2">
-              <View className="w-2.5 h-2.5 rounded-full bg-green-500" />
-              <Text className="text-xs font-semibold text-text-secondary-light dark:text-text-secondary-dark">
-                Confirmed
+            {/* Confirmed */}
+            <View className="flex-row items-center">
+              <View className="w-2.5 h-2.5 rounded-full bg-green-500 mr-2" />
+              <Text
+                className="text-xs 
+  text-text-secondary-light dark:text-text-secondary-dark 
+  tracking-wide"
+              >
+                CONFIRMED
               </Text>
             </View>
 
+            {/* View QR */}
             <TouchableOpacity
               onPress={onViewQR}
-              className="px-4 py-2 rounded-xl bg-primary/10"
+              className="px-5 py-2 rounded-full 
+    bg-card-light dark:bg-[#2c2b2b]
+    border border-border-light dark:border-border-dark"
             >
-              <Text className="text-xs font-bold text-primary">View QR →</Text>
+              <View className="flex-row items-center gap-1">
+                <Text
+                  className="text-sm font-medium
+      text-text-secondary-light dark:text-text-primary-dark"
+                >
+                  View QR
+                </Text>
+
+                <Ionicons
+                  name="arrow-forward"
+                  size={16}
+                  color={colorScheme === "dark" ? "#F5F5F5" : "#6B7280"}
+                />
+              </View>
             </TouchableOpacity>
           </View>
         </>

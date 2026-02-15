@@ -216,25 +216,37 @@ function BookingCard({
   onSecondaryPress,
 }: any) {
   return (
-    <View className="mb-5 rounded-xl bg-card-light dark:bg-card-dark p-4 border border-border-light dark:border-border-dark">
-      {/* ROW */}
-      <View className="flex-row items-stretch gap-4">
-        {/* LEFT IMAGE — FULL HEIGHT */}
-        <Image
-          source={{ uri: data.image }}
-          className=" rounded-lg"
-          resizeMode="cover"
-          style={{ height: "100%", width: "40%" }}
-        />
+    <View
+      className="mb-5 rounded-3xl 
+      bg-card-light dark:bg-card-dark 
+      border border-border-light dark:border-border-dark 
+      overflow-hidden"
+    >
+      {/* CONTENT */}
+      <View className="flex-row gap-4 p-4">
+        {/* IMAGE */}
+        <View className="w-24 h-24 rounded-2xl overflow-hidden mt-1">
+          <Image
+            source={{ uri: data.image }}
+            className="w-full h-full"
+            resizeMode="cover"
+          />
+        </View>
 
-        {/* RIGHT CONTENT — STRETCH */}
+        {/* RIGHT SIDE */}
         <View className="flex-1 justify-between">
           <View>
-            <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
+            <Text
+              className="text-base font-semibold 
+              text-text-primary-light dark:text-text-primary-dark"
+            >
               {data.title}
             </Text>
 
-            <Text className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
+            <Text
+              className="text-sm mt-0.5 
+              text-text-secondary-light dark:text-text-secondary-dark"
+            >
               {data.subtitle}
             </Text>
 
@@ -248,7 +260,11 @@ function BookingCard({
 
       {/* ACTIONS */}
       {(primaryAction || secondaryAction) && (
-        <View className="mt-4 flex-row gap-3 border-t border-border-light dark:border-border-dark pt-3">
+        <View
+          className="flex-row gap-3 
+          px-4 pb-4 
+          border-t border-border-light dark:border-border-dark pt-3"
+        >
           {secondaryAction && (
             <ActionButton
               text={secondaryAction}
@@ -272,26 +288,29 @@ function BookingCard({
 function InfoRow({ icon, text }: any) {
   return (
     <View className="flex-row items-center gap-2">
-      <MaterialIcons name={icon} size={16} color="#ff7b00" />
-      <Text className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
+      <MaterialIcons name={icon} size={16} color="#FF9500" />
+      <Text
+        className="text-sm 
+        text-text-secondary-light dark:text-text-secondary-dark"
+      >
         {text}
       </Text>
     </View>
   );
 }
-
 function ActionButton({ text, variant, onPress }: any) {
   return (
     <TouchableOpacity
       onPress={onPress}
-      className={`flex-1 h-10 items-center justify-center rounded-lg ${
+      activeOpacity={0.9}
+      className={`flex-1 py-2.5 items-center justify-center rounded-2xl ${
         variant === "primary"
           ? "bg-primary"
-          : "bg-transparent border border-border-light dark:border-border-dark"
+          : "bg-card-light dark:bg-card-dark border border-gray-300 dark:border-gray-600"
       }`}
     >
       <Text
-        className={`font-bold ${
+        className={`text-sm font-semibold ${
           variant === "primary"
             ? "text-white"
             : "text-text-primary-light dark:text-text-primary-dark"

@@ -139,9 +139,11 @@ function ActivityCard({
         <TouchableOpacity
           onPress={onPress}
           activeOpacity={0.85}
-          className="mt-2 px-4 py-2 bg-primary rounded-lg self-start"
+          className="mt-2 px-4 py-2 bg-primary rounded-2xl self-start"
         >
-          <Text className="text-sm font-bold text-white">Book Now</Text>
+          <Text className="text-sm font-semibold text-black dark:text-white">
+            Book Now
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
