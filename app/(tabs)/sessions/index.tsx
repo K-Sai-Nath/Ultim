@@ -1,14 +1,14 @@
 import { getAccessToken } from "@/services/authService";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  FlatList,
   Image,
-  ScrollView,
   Text,
   TouchableOpacity,
   View,
@@ -20,36 +20,60 @@ export default function BookingsScreen() {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
-
+  const getImageForType = (type?: string) => {
+    switch (type) {
+      case "badminton":
+        return "https://loremflickr.com/400/400/badminton";
+      case "gym":
+        return "https://images.unsplash.com/photo-1558611848-73f7eb4001a1";
+      case "swimming":
+        return "https://loremflickr.com/400/400/swimming";
+      case "yoga":
+        return "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b";
+      default:
+        return "https://images.unsplash.com/photo-1517836357463-d25dfeac3438";
+    }
+  };
   /* ---------------------------------- */
-  /* FETCH BOOKINGS (CACHED)            */
+  /* FETCH BOOKINGS (PAGINATED)         */
   /* ---------------------------------- */
 
-  const fetchBookings = async () => {
+  const fetchBookings = async ({ pageParam = 1 }: { pageParam?: number }) => {
     const token = await getAccessToken();
     if (!token) throw new Error("No token");
 
     const res = await axios.get(
-      "https://ultim-server.vercel.app/api/bookings",
+      `https://ultim-server.vercel.app/api/bookings?page=${pageParam}&limit=10&sort=-createdAt`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       }
     );
-    return res.data.docs || [];
+
+    return {
+      docs: res.data.docs || [],
+      nextPage: res.data.hasNextPage ? res.data.nextPage : undefined,
+    };
   };
 
   const {
-    data: bookings = [],
+    data,
     isLoading,
     isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
     refetch,
-  } = useQuery({
+  } = useInfiniteQuery({
     queryKey: ["bookings"],
     queryFn: fetchBookings,
-    staleTime: 1000 * 60 * 5, // 5 minutes cache
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => lastPage.nextPage,
+    staleTime: 1000 * 60 * 5,
   });
+
+  const bookings = data?.pages.flatMap((page) => page.docs) || [];
 
   /* ---------------------------------- */
   /* SPLIT UPCOMING / PAST              */
@@ -60,12 +84,9 @@ export default function BookingsScreen() {
   const upcoming = useMemo(() => {
     return bookings.filter((b: any) => {
       const datePart = new Date(b.sessionDate);
-
       const [hour, minute] = b.sessionTime.split(":");
-
       datePart.setHours(parseInt(hour));
       datePart.setMinutes(parseInt(minute));
-
       return datePart >= now;
     });
   }, [bookings]);
@@ -73,19 +94,39 @@ export default function BookingsScreen() {
   const past = useMemo(() => {
     return bookings.filter((b: any) => {
       const datePart = new Date(b.sessionDate);
-
       const [hour, minute] = b.sessionTime.split(":");
-
       datePart.setHours(parseInt(hour));
       datePart.setMinutes(parseInt(minute));
-
       return datePart < now;
     });
   }, [bookings]);
-  console.log("Upcoming:", upcoming);
-  const data = activeTab === "upcoming" ? upcoming : past;
+
+  const filteredData = activeTab === "upcoming" ? upcoming : past;
 
   const iconColor = isDark ? "#f5f5f5" : "#000";
+
+  /* ---------------------------------- */
+  /* RENDER ITEM                        */
+  /* ---------------------------------- */
+
+  const renderItem = ({ item }: any) => {
+    const dateObj = new Date(item.sessionDate);
+    const dateString = dateObj.toDateString();
+    const membershipType = item.membership?.membershipPlan?.type;
+    return (
+      <BookingCard
+        data={{
+          title: item.membership?.membershipPlan?.planName || "Session",
+          subtitle: item.tenant?.Facility,
+          date: `${dateString} - ${item.sessionTime}`,
+          location: item.tenant?.Facility,
+          image: getImageForType(membershipType),
+        }}
+        primaryAction={activeTab === "upcoming" ? "View QR" : null}
+        onPrimaryPress={() => router.push(`/(stack)/qr/${item.id}`)}
+      />
+    );
+  };
 
   return (
     <SafeAreaView
@@ -134,96 +175,64 @@ export default function BookingsScreen() {
       </View>
 
       {/* Content */}
-      <ScrollView className="flex-1 px-4 pt-4 mb-20">
-        {isLoading && (
-          <View className="py-20 items-center">
-            <ActivityIndicator size="large" color="#ff7b00" />
-          </View>
-        )}
-
-        {isError && (
-          <View className="py-20 items-center">
-            <Text className="text-red-500">Failed to load bookings</Text>
-            <TouchableOpacity
-              onPress={() => refetch()}
-              className="mt-4 px-4 py-2 bg-primary rounded-xl"
-            >
-              <Text className="text-white">Retry</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {!isLoading && !isError && data.length === 0 && (
-          <View className="py-20 items-center">
-            <Text className="text-text-secondary-light dark:text-text-secondary-dark">
-              No bookings found
-            </Text>
-          </View>
-        )}
-
-        {!isLoading &&
-          !isError &&
-          data.map((item: any) => {
-            const dateObj = new Date(item.sessionDate);
-            const dateString = dateObj.toDateString();
-
-            return (
-              <BookingCard
-                key={item.id}
-                data={{
-                  title: item.membership?.membershipPlan?.planName || "Session",
-                  subtitle: item.tenant?.Facility,
-                  date: `${dateString} - ${item.sessionTime}`,
-                  location: item.tenant?.Facility,
-                  image:
-                    "https://images.unsplash.com/photo-1517836357463-d25dfeac3438",
-                }}
-                primaryAction={activeTab === "upcoming" ? "View QR" : null}
-                onPrimaryPress={() => router.push(`/(stack)/qr/${item.id}`)}
+      {isLoading ? (
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#ff7b00" />
+        </View>
+      ) : isError ? (
+        <View className="flex-1 justify-center items-center">
+          <Text className="text-red-500">Failed to load bookings</Text>
+          <TouchableOpacity
+            onPress={() => refetch()}
+            className="mt-4 px-4 py-2 bg-primary rounded-xl"
+          >
+            <Text className="text-white">Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredData}
+          keyExtractor={(item: any) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingTop: 16,
+            paddingBottom: 100,
+          }}
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage) {
+              fetchNextPage();
+            }
+          }}
+          onEndReachedThreshold={0.5}
+          refreshing={isLoading}
+          onRefresh={refetch}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <ActivityIndicator
+                size="small"
+                color="#ff7b00"
+                style={{ marginVertical: 20 }}
               />
-            );
-          })}
-      </ScrollView>
+            ) : null
+          }
+          ListEmptyComponent={
+            !isLoading && !isFetchingNextPage ? (
+              <View className="py-20 items-center">
+                <Text className="text-text-secondary-light dark:text-text-secondary-dark">
+                  No bookings found
+                </Text>
+              </View>
+            ) : null
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
 
 /* ---------------------------------- */
-/* EMPTY STATE                         */
-/* ---------------------------------- */
-
-function EmptyState() {
-  const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === "dark";
-
-  return (
-    <View className="flex-1 items-center justify-center px-6">
-      <MaterialIcons
-        name="event"
-        size={72}
-        color={isDark ? "#6b7280" : "#9ca3af"}
-        style={{ marginBottom: 16 }}
-      />
-
-      <Text
-        className="text-lg font-semibold text-center"
-        style={{ color: isDark ? "#f5f5f5" : "#111827" }}
-      >
-        No sessions
-      </Text>
-
-      <Text
-        className="mt-1 text-sm text-center"
-        style={{ color: isDark ? "#9ca3af" : "#6b7280" }}
-      >
-        Your sessions will appear here
-      </Text>
-    </View>
-  );
-}
-
-/* ---------------------------------- */
-/* CARD + SMALL COMPONENTS             */
+/* CARD COMPONENTS (UNCHANGED)        */
 /* ---------------------------------- */
 
 function BookingCard({
@@ -240,9 +249,7 @@ function BookingCard({
       border border-border-light dark:border-border-dark 
       overflow-hidden"
     >
-      {/* CONTENT */}
       <View className="flex-row gap-4 p-4">
-        {/* IMAGE */}
         <View className="w-24 h-24 rounded-2xl overflow-hidden mt-1">
           <Image
             source={{ uri: data.image }}
@@ -251,20 +258,13 @@ function BookingCard({
           />
         </View>
 
-        {/* RIGHT SIDE */}
         <View className="flex-1 justify-between">
           <View>
-            <Text
-              className="text-base font-semibold 
-              text-text-primary-light dark:text-text-primary-dark"
-            >
+            <Text className="text-base font-semibold text-text-primary-light dark:text-text-primary-dark">
               {data.title}
             </Text>
 
-            <Text
-              className="text-sm mt-0.5 
-              text-text-secondary-light dark:text-text-secondary-dark"
-            >
+            <Text className="text-sm mt-0.5 text-text-secondary-light dark:text-text-secondary-dark">
               {data.subtitle}
             </Text>
 
@@ -276,13 +276,8 @@ function BookingCard({
         </View>
       </View>
 
-      {/* ACTIONS */}
       {(primaryAction || secondaryAction) && (
-        <View
-          className="flex-row gap-3 
-          px-4 pb-4 
-          border-t border-border-light dark:border-border-dark pt-3"
-        >
+        <View className="flex-row gap-3 px-4 pb-4 border-t border-border-light dark:border-border-dark pt-3">
           {secondaryAction && (
             <ActionButton
               text={secondaryAction}
@@ -307,15 +302,13 @@ function InfoRow({ icon, text }: any) {
   return (
     <View className="flex-row items-center gap-2">
       <MaterialIcons name={icon} size={16} color="#FF9500" />
-      <Text
-        className="text-sm 
-        text-text-secondary-light dark:text-text-secondary-dark"
-      >
+      <Text className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
         {text}
       </Text>
     </View>
   );
 }
+
 function ActionButton({ text, variant, onPress }: any) {
   return (
     <TouchableOpacity

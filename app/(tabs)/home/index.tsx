@@ -7,7 +7,7 @@ import { useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
 import React from "react";
 import {
-  Alert,
+  ActivityIndicator,
   Dimensions,
   Image,
   ScrollView,
@@ -78,22 +78,18 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
-  const handleTryNewNavigation = (title: string) => {
-    switch (title) {
-      case "Swimming":
-        Alert.alert("Swimming");
-        break;
-
-      case "Yoga":
-        Alert.alert("Yoga");
-        break;
-
-      case "Badminton":
-        Alert.alert("Badminton");
-        break;
-
+  const getImageForType = (type: string) => {
+    switch (type) {
+      case "badminton":
+        return "https://loremflickr.com/400/400/badminton";
+      case "gym":
+        return "https://images.unsplash.com/photo-1558611848-73f7eb4001a1";
+      case "swimming":
+        return "https://loremflickr.com/400/400/swimming";
+      case "yoga":
+        return "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b";
       default:
-        router.push("/(tabs)/access");
+        return "https://images.unsplash.com/photo-1558611848-73f7eb4001a1";
     }
   };
   const fetchMemberships = async () => {
@@ -147,6 +143,9 @@ export default function HomeScreen() {
   );
   const gymMembership = memberships.find(
     (m: any) => m.membershipPlan.type === "gym"
+  );
+  const activeMemberships = memberships.filter(
+    (m: any) => new Date(m.endDate) > new Date()
   );
   console.log(todayBookings);
   const badmintonBooking = (todayBookingsList?.docs ?? []).find(
@@ -228,59 +227,106 @@ export default function HomeScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 16 }}
+            contentContainerStyle={{
+              paddingHorizontal: 16,
+              flexGrow: 1,
+              justifyContent:
+                membershipsLoading || activeMemberships.length === 0
+                  ? "center"
+                  : "flex-start",
+              alignItems:
+                membershipsLoading || activeMemberships.length === 0
+                  ? "center"
+                  : "flex-start",
+            }}
           >
-            {tryNewItems.map((item) => (
-              <TryNewCard
-                key={item.id}
-                title={item.title}
-                venue={item.venue}
-                location={item.location}
-                credits={item.credits}
-                image={item.image}
-                onPress={() => {
-                  handleTryNewNavigation(item.title);
-                }}
-              />
-            ))}
+            {membershipsLoading ? (
+              <View className="py-10 items-center">
+                <ActivityIndicator size="small" color="#ff7b00" />
+                <Text className="mt-3 text-text-secondary-light dark:text-text-secondary-dark">
+                  Loading
+                </Text>
+              </View>
+            ) : activeMemberships.length === 0 ? (
+              <View className="h-40 w-full items-center justify-center">
+                <Text className="text-text-secondary-light dark:text-text-secondary-dark">
+                  No memberships available
+                </Text>
+              </View>
+            ) : (
+              activeMemberships.map((item: any) => (
+                <TryNewCard
+                  key={item.id}
+                  title={item.membershipPlan.planName}
+                  venue={item.tenant?.Facility ?? "Facility"}
+                  location={`Expires: ${new Date(
+                    item.endDate
+                  ).toLocaleDateString()}`}
+                  credits={item.availableCredits ?? 0}
+                  image={getImageForType(item.membershipPlan.type)}
+                  onPress={() =>
+                    router.push(`/(stack)/memberships/book/${item.id}`)
+                  }
+                />
+              ))
+            )}
           </ScrollView>
         </View>
-
         {/* TODAY BOOKING */}
         <View className="px-4 mt-10 pb-8">
           <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark mb-3 ml-1">
             Today’s Booking
           </Text>
 
-          {/* Gym Membership Card */}
-          {gymMembership && (
-            <TodayBookingCard
-              title="General Gym Session"
-              location={gymMembership.tenant?.Facility ?? "Gym Facility"}
-              booked={true}
-              image="https://images.unsplash.com/photo-1558611848-73f7eb4001a1"
-              onGenerateQR={() => router.push("/(stack)/qr/1")}
-              onViewQR={() => router.push("/(stack)/qr/1")}
-            />
-          )}
+          {/* Loading */}
+          {bookingsLoading ? (
+            <View className="py-10 items-center">
+              <ActivityIndicator size="small" color="#ff7b00" />
+              <Text className="mt-3 text-text-secondary-light dark:text-text-secondary-dark">
+                Checking today’s bookings...
+              </Text>
+            </View>
+          ) : /* Error (if you have error state) */
+          false ? (
+            <View className="py-10 items-center">
+              <Text className="text-red-500">
+                Failed to load today’s bookings
+              </Text>
+            </View>
+          ) : gymMembership || badmintonBooking ? (
+            <>
+              {/* Gym Membership */}
+              {gymMembership && (
+                <TodayBookingCard
+                  title="General Gym Session"
+                  location={gymMembership.tenant?.Facility ?? "Gym Facility"}
+                  booked
+                  image="https://images.unsplash.com/photo-1558611848-73f7eb4001a1"
+                  onGenerateQR={() => router.push("/(stack)/qr/1")}
+                  onViewQR={() => router.push("/(stack)/qr/1")}
+                />
+              )}
 
-          {/* Badminton Booking Card */}
-          {badmintonBooking && (
-            <TodayBookingCard
-              title="Badminton Session"
-              time={`${badmintonBooking} - ${badmintonBooking.endTime}`}
-              location={badmintonBooking.venue ?? "Badminton Court"}
-              booked
-              image="https://loremflickr.com/400/400/badminton"
-              onViewQR={() => router.push("/(stack)/qr/1")}
-            />
-          )}
-
-          {/* No bookings */}
-          {!gymMembership && !badmintonBooking && (
-            <Text className="text-text-secondary-light dark:text-text-secondary-dark ml-1">
-              No bookings for today
-            </Text>
+              {/* Badminton Booking */}
+              {badmintonBooking && (
+                <TodayBookingCard
+                  title="Badminton Session"
+                  time={`${badmintonBooking.startTime} - ${badmintonBooking.endTime}`}
+                  location={badmintonBooking.venue ?? "Badminton Court"}
+                  booked
+                  image="https://loremflickr.com/400/400/badminton"
+                  onViewQR={() => router.push("/(stack)/qr/1")}
+                />
+              )}
+            </>
+          ) : (
+            /* Empty */
+            <View className="py-10 items-center">
+              <MaterialIcons name="event-busy" size={40} color="#999" />
+              <Text className="mt-3 text-text-secondary-light dark:text-text-secondary-dark">
+                No bookings for today
+              </Text>
+            </View>
           )}
         </View>
       </ScrollView>
