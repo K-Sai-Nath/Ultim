@@ -1,10 +1,12 @@
+import { getAccessToken } from "@/services/authService";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
-import React, { useEffect, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   ScrollView,
   Text,
@@ -13,76 +15,80 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-/* ---------------------------------- */
-/* JSON DATA                           */
-/* ---------------------------------- */
-
-const bookingsData = {
-  upcoming: [
-    {
-      id: "1",
-      title: "Vinyasa Flow Yoga",
-      subtitle: "at Serenity Studio",
-      date: "Mon, 28 Oct - 9:00 AM",
-      location: "SoHo, Manhattan",
-      image:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuC6Xmf0IZ96SoC3VOC0yzgHi6D0bL8iXKY5Ayq72gI3ZQIYyGp1m3aDiHizwSkLa48JbMEvyd-90Cq-9y_O7w_vPKfNyqPvRR28hC16sn1jbsSqeZ8tqCtaCTZkfTRqasbMDH5zap87h6_bDra78DJN2mCeFhkN8vz8TKu3SWg-Mmbe8UwrYWsWx34cPlYHNJMv_QDSssTjKDPSJaKKoc77jqTT5qpGwQ0cy8_kKTiuRS5tGJNGS1jpY6h4OpxBix-v2XrMCVlolE86",
-    },
-    {
-      id: "2",
-      title: "Strength Training",
-      subtitle: "at Iron Core Gym",
-      date: "Wed, 30 Oct - 6:00 PM",
-      location: "Brooklyn",
-      image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438",
-    },
-  ],
-  past: [
-    {
-      id: "3",
-      title: "HIIT Cardio Blast",
-      subtitle: "at Pulse Fitness",
-      date: "19 Oct - 10:00 AM",
-      location: "Midtown East",
-      image:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuDVX1KVCRgUajchvMngiwPNsQZmwr7uwWER3VN0MjWFrXHo_gzyiqGGT7i27K8yd_boiX5ATONulV-W_Vc1reB23Rc9c3IudzAmJvCp3BuNygQ9KlpgdWNJfPhbRRqZRZqKtDR2kemjF2LKaGXmVO88SQUiclC2v5Xs3LjKfE9znYy7gkDHHi6P2_O9M33AHkFiPS3Jj6ILyR6gXs9vr9kcq5o58bQGHM-coimpiz5uIAp38DUeV_HGLRdJJCLvubcPg7P4n0p8CqFD",
-    },
-    {
-      id: "4",
-      title: "Morning Pilates",
-      subtitle: "at Flex Studio",
-      date: "10 Oct - 7:00 AM",
-      location: "Upper East Side",
-      image: "https://images.unsplash.com/photo-1552196563-55cd4e45efb3",
-    },
-  ],
-};
-
-/* ---------------------------------- */
-/* SCREEN                              */
-/* ---------------------------------- */
-
 export default function BookingsScreen() {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
-
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
+  /* ---------------------------------- */
+  /* FETCH BOOKINGS (CACHED)            */
+  /* ---------------------------------- */
 
-  const data =
-    activeTab === "upcoming" ? bookingsData.upcoming : bookingsData.past;
+  const fetchBookings = async () => {
+    const token = await getAccessToken();
+    if (!token) throw new Error("No token");
 
-  const iconColor = isDark ? "#f5f5f5" : "#000000";
+    const res = await axios.get(
+      "https://ultim-server.vercel.app/api/bookings",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return res.data.docs || [];
+  };
+
+  const {
+    data: bookings = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ["bookings"],
+    queryFn: fetchBookings,
+    staleTime: 1000 * 60 * 5, // 5 minutes cache
+  });
+
+  /* ---------------------------------- */
+  /* SPLIT UPCOMING / PAST              */
+  /* ---------------------------------- */
+
+  const now = new Date();
+
+  const upcoming = useMemo(() => {
+    return bookings.filter((b: any) => {
+      const datePart = new Date(b.sessionDate);
+
+      const [hour, minute] = b.sessionTime.split(":");
+
+      datePart.setHours(parseInt(hour));
+      datePart.setMinutes(parseInt(minute));
+
+      return datePart >= now;
+    });
+  }, [bookings]);
+
+  const past = useMemo(() => {
+    return bookings.filter((b: any) => {
+      const datePart = new Date(b.sessionDate);
+
+      const [hour, minute] = b.sessionTime.split(":");
+
+      datePart.setHours(parseInt(hour));
+      datePart.setMinutes(parseInt(minute));
+
+      return datePart < now;
+    });
+  }, [bookings]);
+  console.log("Upcoming:", upcoming);
+  const data = activeTab === "upcoming" ? upcoming : past;
+
+  const iconColor = isDark ? "#f5f5f5" : "#000";
 
   return (
     <SafeAreaView
-      edges={["top"]}
       style={{
         flex: 1,
         backgroundColor: isDark ? "#0f0f0f" : "#ffffff",
@@ -109,7 +115,7 @@ export default function BookingsScreen() {
         {["upcoming", "past"].map((tab) => (
           <TouchableOpacity
             key={tab}
-            onPress={() => setActiveTab(tab as "upcoming" | "past")}
+            onPress={() => setActiveTab(tab as any)}
             className={`flex-1 items-center py-3 border-b-2 ${
               activeTab === tab ? "border-primary" : "border-transparent"
             }`}
@@ -128,43 +134,55 @@ export default function BookingsScreen() {
       </View>
 
       {/* Content */}
-      <ScrollView
-        className="flex-1 px-4 pt-4"
-        contentContainerStyle={{
-          paddingBottom: 100,
-          flexGrow: data.length === 0 || loading ? 1 : undefined,
-        }}
-        showsVerticalScrollIndicator={false}
-      >
-        {loading && (
-          <View className="py-20 items-center justify-center">
-            <ActivityIndicator size="large" color={"#ff7b00"} />
+      <ScrollView className="flex-1 px-4 pt-4 mb-20">
+        {isLoading && (
+          <View className="py-20 items-center">
+            <ActivityIndicator size="large" color="#ff7b00" />
           </View>
         )}
 
-        {!loading &&
-          (data.length === 0 ? (
-            <EmptyState />
-          ) : (
-            data.map((item) => (
+        {isError && (
+          <View className="py-20 items-center">
+            <Text className="text-red-500">Failed to load bookings</Text>
+            <TouchableOpacity
+              onPress={() => refetch()}
+              className="mt-4 px-4 py-2 bg-primary rounded-xl"
+            >
+              <Text className="text-white">Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {!isLoading && !isError && data.length === 0 && (
+          <View className="py-20 items-center">
+            <Text className="text-text-secondary-light dark:text-text-secondary-dark">
+              No bookings found
+            </Text>
+          </View>
+        )}
+
+        {!isLoading &&
+          !isError &&
+          data.map((item: any) => {
+            const dateObj = new Date(item.sessionDate);
+            const dateString = dateObj.toDateString();
+
+            return (
               <BookingCard
                 key={item.id}
-                data={item}
+                data={{
+                  title: item.membership?.membershipPlan?.planName || "Session",
+                  subtitle: item.tenant?.Facility,
+                  date: `${dateString} - ${item.sessionTime}`,
+                  location: item.tenant?.Facility,
+                  image:
+                    "https://images.unsplash.com/photo-1517836357463-d25dfeac3438",
+                }}
                 primaryAction={activeTab === "upcoming" ? "View QR" : null}
-                secondaryAction={activeTab === "upcoming" ? "Cancel" : null}
-                onPrimaryPress={() => {
-                  if (activeTab === "upcoming") {
-                    router.push(`/(stack)/qr/${item.id}`);
-                  }
-                }}
-                onSecondaryPress={() => {
-                  if (activeTab === "upcoming") {
-                    Alert.alert("Clicked Cancel");
-                  }
-                }}
+                onPrimaryPress={() => router.push(`/(stack)/qr/${item.id}`)}
               />
-            ))
-          ))}
+            );
+          })}
       </ScrollView>
     </SafeAreaView>
   );

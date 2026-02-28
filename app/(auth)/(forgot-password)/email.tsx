@@ -1,4 +1,5 @@
 import { MaterialIcons } from "@expo/vector-icons";
+import axios from "axios";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
 import { useState } from "react";
@@ -45,15 +46,23 @@ export default function ForgotPasswordEmailScreen() {
     setLoading(true);
 
     try {
-      // 🔥 API call goes here
-      await new Promise((res) => setTimeout(res, 1500));
-
-      router.push({
-        pathname: "/(auth)/(forgot-password)/resetPassword",
-        params: { email },
-      });
+      const res = await axios.post(
+        "https://ultim-server.vercel.app/api/users/forgot-password",
+        { email }
+      );
+      // router.push({
+      //   pathname: "/(auth)/(forgot-password)/resetPassword",
+      //   params: { email },
+      // });
     } catch (e) {
-      setError("Something went wrong. Try again.");
+      if (axios.isAxiosError(e)) {
+        console.log(e);
+        setError(
+          e.response?.data?.message || "Something went wrong. Try again."
+        );
+      } else {
+        setError("Something went wrong. Try again.");
+      }
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,16 @@
 import { MaterialIcons } from "@expo/vector-icons";
+import axios from "axios";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SwiperFlatList } from "react-native-swiper-flatlist";
 
@@ -9,82 +18,28 @@ import { SwiperFlatList } from "react-native-swiper-flatlist";
 /* TYPES                               */
 /* ---------------------------------- */
 
-type Pricing = Record<string, string>;
-
 type Plan = {
-  title: string;
-  images: string[];
-  features: string[];
-  pricing: Pricing;
+  MembershipPlanMaximumDiscount: any;
+  id: number;
+  planName: string;
+  description: string;
+  category: string;
+  planPrice: number;
+  Duration: string;
+  creditsOffered: number;
+  numberOfCreditsPerSession: number;
+  numberOfSessions: number;
 };
-
-type PlansByCategory = Record<string, Record<string, Plan>>;
 
 /* ---------------------------------- */
 /* MOCK PLAN DATA                      */
 /* ---------------------------------- */
 
-const PLAN_DETAILS: PlansByCategory = {
-  fitness: {
-    "1": {
-      title: "Gym Monthly Plan",
-      images: [
-        "https://images.unsplash.com/photo-1558611848-73f7eb4001a1",
-        "https://images.unsplash.com/photo-1599058917212-d750089bc07e",
-      ],
-      features: [
-        "4,000 Ultim Credits",
-        "Guest access for your circle",
-        "30 days credit validity",
-      ],
-      pricing: {
-        Monthly: "₹2,999",
-        Quarterly: "₹7,999",
-        Yearly: "₹12,999",
-      },
-    },
-  },
-
-  sports: {
-    "3": {
-      title: "Badminton Plan",
-      images: [
-        "https://loremflickr.com/400/300/badminton",
-        "https://loremflickr.com/400/300/sports",
-      ],
-      features: [
-        "3,000 Ultim Credits",
-        "Court access included",
-        "30 days credit validity",
-      ],
-      pricing: {
-        Monthly: "₹1,999",
-        Quarterly: "₹5,499",
-        Yearly: "₹9,999",
-      },
-    },
-  },
-
-  health: {
-    "5": {
-      title: "Yoga Plan",
-      images: [
-        "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b",
-        "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b",
-      ],
-      features: [
-        "2,000 Ultim Credits",
-        "Guided yoga sessions",
-        "30 days credit validity",
-      ],
-      pricing: {
-        Monthly: "₹1,499",
-        Quarterly: "₹3,999",
-        Yearly: "₹6,999",
-      },
-    },
-  },
-};
+const mockImages = [
+  "https://images.unsplash.com/photo-1558611848-73f7eb4001a1",
+  "https://images.unsplash.com/photo-1517964603305-11c0f6f66012",
+  "https://images.unsplash.com/photo-1546519638-68e109498ffc",
+];
 
 /* ---------------------------------- */
 /* SCREEN                              */
@@ -99,18 +54,30 @@ export default function PlanDetailScreen() {
     category: string;
     planId: string;
   }>();
+  const [plan, setPlan] = useState<Plan | null>(null);
 
-  const plan = PLAN_DETAILS?.[category]?.[planId];
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (!category) return;
 
-  if (!plan) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background-light dark:bg-background-dark">
-        <Text className="text-text-secondary-light dark:text-text-secondary-dark">
-          Plan not found
-        </Text>
-      </SafeAreaView>
-    );
-  }
+    const fetchPlans = async () => {
+      try {
+        setLoading(true);
+
+        const res = await axios.get(
+          `https://ultim-server.vercel.app/api/membership-plans?where[id][equals]=${planId}`
+        );
+        setPlan(res.data.docs?.[0] || null);
+      } catch (err) {
+        setError("Failed to load plans");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPlans();
+  }, [planId]);
 
   const iconColor = isDark ? "#f5f5f5" : "#000";
 
@@ -137,75 +104,137 @@ export default function PlanDetailScreen() {
 
         <View className="w-10 h-10" />
       </View>
-
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* IMAGE SLIDER (NOT FULL WIDTH) */}
-        <View className="mt-2">
-          <SwiperFlatList
-            autoplay
-            autoplayDelay={3}
-            autoplayLoop
-            showPagination
-            paginationActiveColor="#ff7b00"
-            paginationDefaultColor="#d1d5db"
-            paginationStyle={{
-              bottom: 6,
-            }}
-            paginationStyleItem={{
-              width: 8,
-              height: 8,
-              marginHorizontal: 3,
-              borderRadius: 4,
-            }}
-            data={plan.images}
-            renderItem={({ item }) => (
-              <View className="mx-4 rounded-2xl overflow-hidden">
-                <Image
-                  source={{ uri: item }}
-                  className="w-[90vw] h-56"
-                  resizeMode="cover"
-                />
-              </View>
-            )}
+      {loading && (
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator
+            size="large"
+            color={isDark ? "#a78bfa" : "#6366F1"}
           />
+          <Text className="mt-4 text-sm text-text-secondary-light dark:text-text-secondary-dark">
+            Loading plan details...
+          </Text>
         </View>
+      )}
+      {error !== "" && (
+        <View className="flex-1 justify-center items-center">
+          <Text
+            style={{
+              color: isDark ? "#f87171" : "#dc2626",
+              fontSize: 16,
+              fontWeight: "500",
+            }}
+          >
+            {error}
+          </Text>
+        </View>
+      )}
 
-        <View className="px-4 mt-6 gap-4">
-          {/* TITLE + FEATURES CARD */}
-          <View className="rounded-xl border border-border-light dark:border-border-dark p-4">
-            <Text className="text-2xl font-extrabold text-text-primary-light dark:text-text-primary-dark">
-              {plan.title}
-            </Text>
-
-            <View className="mt-4 gap-3">
-              {plan.features.map((item, idx) => (
-                <Feature key={idx} text={item} />
-              ))}
-            </View>
+      {!loading && !error && !plan && (
+        <View className="flex-1 justify-center items-center">
+          <MaterialIcons
+            name="event-busy"
+            size={48}
+            color={isDark ? "#9ca3af" : "#6b7280"}
+          />
+          <Text
+            style={{
+              color: isDark ? "#9ca3af" : "#6b7280",
+              marginTop: 12,
+              fontSize: 16,
+            }}
+          >
+            Plan not available
+          </Text>
+        </View>
+      )}
+      {!loading && !error && plan && (
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* IMAGE SLIDER (NOT FULL WIDTH) */}
+          <View className="mt-2">
+            <SwiperFlatList
+              autoplay
+              autoplayDelay={3}
+              autoplayLoop
+              showPagination
+              paginationActiveColor="#ff7b00"
+              paginationDefaultColor="#d1d5db"
+              paginationStyle={{
+                bottom: 6,
+              }}
+              paginationStyleItem={{
+                width: 8,
+                height: 8,
+                marginHorizontal: 3,
+                borderRadius: 4,
+              }}
+              data={mockImages}
+              renderItem={({ item }) => (
+                <View className="mx-4 rounded-2xl overflow-hidden">
+                  <Image
+                    source={{ uri: item }}
+                    className="w-[90vw] h-56"
+                    resizeMode="cover"
+                  />
+                </View>
+              )}
+            />
           </View>
+          <View className="px-4 mt-6 gap-4">
+            {/* TITLE + FEATURES STYLE CARD */}
+            <View className="rounded-xl border border-border-light dark:border-border-dark p-4">
+              <Text className="text-2xl font-extrabold text-text-primary-light dark:text-text-primary-dark">
+                {plan.planName}
+              </Text>
 
-          {/* PRICING CARD */}
-          <View className="rounded-xl border border-border-light dark:border-border-dark p-4">
-            <Text className="text-lg font-bold mb-3 text-text-primary-light dark:text-text-primary-dark">
-              Pricing
-            </Text>
-
-            {Object.entries(plan.pricing).map(([label, price]) => (
-              <PriceRow key={label} label={label} price={price} />
-            ))}
-          </View>
-
-          {/* INFO CARD */}
-          <View className="rounded-xl border border-border-light dark:border-border-dark p-4">
-            <View className="flex-row gap-3">
-              <MaterialIcons name="location-on" size={22} color="#ff7b00" />
-              <Text className="flex-1 text-sm text-text-secondary-light dark:text-text-secondary-dark">
-                Reach your venue to avail credits. Credits activate on check-in.
+              <Text className="mt-2 text-sm text-text-secondary-light dark:text-text-secondary-dark">
+                {plan.description}
               </Text>
             </View>
+            {/* Details */}
+            <View className="rounded-xl border border-border-light dark:border-border-dark p-4">
+              <Text className="text-lg font-bold mb-4 text-text-primary-light dark:text-text-primary-dark">
+                Details
+              </Text>
+
+              <View className="gap-3">
+                <Feature text={`${plan.Duration} Month Duration`} />
+                <Feature text={`${plan.numberOfSessions} Sessions Included`} />
+                <Feature
+                  text={`${plan.numberOfCreditsPerSession} Credits / Session`}
+                />
+                <Feature text={`${plan.creditsOffered} Total Credits`} />
+
+                {plan.MembershipPlanMaximumDiscount > 0 && (
+                  <Feature
+                    text={`Max Discount ₹${plan.MembershipPlanMaximumDiscount}`}
+                  />
+                )}
+              </View>
+            </View>
+
+            {/* PRICING CARD (Same Style As Before) */}
+            <View className="rounded-xl border border-border-light dark:border-border-dark p-4">
+              <Text className="text-lg font-bold mb-3 text-text-primary-light dark:text-text-primary-dark">
+                Pricing
+              </Text>
+
+              <PriceRow label="Plan Price" price={`₹${plan.planPrice}`} />
+              <PriceRow label="Duration" price={`${plan.Duration} Month`} />
+            </View>
+
+            {/* INFO CARD */}
+            <View className="rounded-xl border border-border-light dark:border-border-dark p-4 mb-20">
+              <View className="flex-row gap-3">
+                <MaterialIcons name="location-on" size={22} color="#ff7b00" />
+                <Text className="flex-1 text-sm text-text-secondary-light dark:text-text-secondary-dark">
+                  Reach your venue to avail credits. Credits activate on
+                  check-in.
+                </Text>
+              </View>
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }

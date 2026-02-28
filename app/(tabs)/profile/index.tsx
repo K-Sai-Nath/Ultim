@@ -1,34 +1,76 @@
+import { useAuth } from "@/context/AuthContext";
+import { getAccessToken, removeAccessToken } from "@/services/authService";
 import { MaterialIcons } from "@expo/vector-icons";
+import axios from "axios";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
-import React from "react";
-import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-/* ---------------------------------- */
-/* SCREEN                              */
-/* ---------------------------------- */
+type Membership = {
+  id: number;
+  startDate: string;
+  endDate: string;
+  availableCredits: number | null;
+  membershipPlan: {
+    planName: string;
+    category: string;
+    planPrice: number;
+  };
+};
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+  const { setUser } = useAuth();
 
   const iconPrimary = isDark ? "#f5f5f5" : "#000000";
   const iconSecondary = isDark ? "#a1a1aa" : "#9ca3af";
 
-  const showAlert = (title: string) => {
-    Alert.alert(title, "Action clicked (route will be added later)");
-  };
+  const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMemberships = async () => {
+      try {
+        setLoading(true);
+        const token = await getAccessToken();
+
+        const res = await axios.get(
+          "https://ultim-server.vercel.app/api/memberships",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        setMemberships(res.data.docs || []);
+      } catch (err) {
+        console.log("Membership fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMemberships();
+  }, []);
 
   return (
     <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
       {/* Header */}
       <View className="flex-row items-center px-4 py-3">
         <TouchableOpacity
-          onPress={() => {
-            router.back();
-          }}
+          onPress={() => router.back()}
           className="w-10 h-10 items-center justify-center"
         >
           <MaterialIcons name="arrow-back" size={24} color={iconPrimary} />
@@ -46,62 +88,75 @@ export default function ProfileScreen() {
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Profile Header */}
-        {/* Profile Summary */}
-        <View className="mt-4 mb-8">
-          <View
-            className="rounded-xl bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark px-5 py-4"
-            style={{
-              elevation: 2,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.08,
-              shadowRadius: 6,
-            }}
-          >
-            {/* Member label */}
-            <Text className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
-              Member
-            </Text>
-
-            {/* Name */}
-            <Text className="mt-1 text-[22px] font-bold text-text-primary-light dark:text-text-primary-dark">
-              Alex Doe
-            </Text>
-
-            {/* Member ID */}
-            <Text className="mt-0.5 text-sm text-text-secondary-light dark:text-text-secondary-dark">
-              Member ID: <Text className="font-medium">GYM-10234</Text>
-            </Text>
-
-            {/* Credits + Plan */}
-            <View className="mt-4 flex-row items-center justify-between">
-              <View>
-                <Text className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
-                  Available Credits
-                </Text>
-                <Text className="text-lg font-bold text-primary">150</Text>
-              </View>
-
-              {/* Plan Status */}
-              <View className="rounded-full bg-primary/10 px-4 py-1">
-                <Text className="text-sm font-semibold text-primary">
-                  Active Plan
-                </Text>
-              </View>
+        {/* ---------------- MEMBERSHIP GRID ---------------- */}
+        <Card title="Your Plans">
+          {loading ? (
+            <View className="items-center py-6">
+              <ActivityIndicator size="large" color="#ff7b00" />
+              <Text className="mt-2 text-sm text-text-secondary-light dark:text-text-secondary-dark">
+                Loading plans...
+              </Text>
             </View>
-          </View>
-        </View>
+          ) : memberships.length === 0 ? (
+            <View className="items-center py-6">
+              <MaterialIcons
+                name="card-membership"
+                size={32}
+                color={isDark ? "#9ca3af" : "#6b7280"}
+              />
+              <Text className="mt-2 text-sm text-text-secondary-light dark:text-text-secondary-dark">
+                No active memberships
+              </Text>
+            </View>
+          ) : (
+            <View className="flex-row flex-wrap justify-between gap-y-4 px-2 pb-3">
+              {memberships.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  onPress={() =>
+                    router.push(`/(stack)/subscription/${item.id}`)
+                  }
+                  activeOpacity={0.9}
+                  className="
+                  w-[48%]
+                  rounded-2xl
+                  p-4
+                  bg-white
+                  dark:bg-card-dark
+                  border-2
+                  border-gray-200
+                  dark:border-border-dark
+                "
+                  style={{
+                    shadowColor: "#000",
+                    shadowOpacity: 0.12,
+                    shadowRadius: 14,
+                    shadowOffset: { width: 0, height: 6 },
+                    elevation: 10,
+                  }}
+                >
+                  <Text className="text-sm font-bold text-text-primary-light dark:text-text-primary-dark">
+                    {item.membershipPlan.planName}
+                  </Text>
 
-        {/* Account Card */}
+                  <Text className="mt-2 text-xs text-text-secondary-light dark:text-text-secondary-dark">
+                    Credits
+                  </Text>
+
+                  <Text className="text-lg font-bold text-primary">
+                    {item.availableCredits ?? 0}
+                  </Text>
+
+                  <Text className="mt-2 text-[10px] text-text-secondary-light dark:text-text-secondary-dark">
+                    Valid till {new Date(item.endDate).toLocaleDateString()}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </Card>
+        {/* ---------------- ACCOUNT CARD ---------------- */}
         <Card title="Account">
-          <ProfileRow
-            icon="card-membership"
-            label="Subscription Details"
-            iconColor={iconPrimary}
-            chevronColor={iconSecondary}
-            onPress={() => router.push("/(stack)/subscription")}
-          />
           <ProfileRow
             icon="notifications"
             label="Notifications"
@@ -118,7 +173,7 @@ export default function ProfileScreen() {
           />
         </Card>
 
-        {/* Support Card */}
+        {/* ---------------- SUPPORT CARD ---------------- */}
         <Card title="Support">
           <ProfileRow
             icon="description"
@@ -143,7 +198,7 @@ export default function ProfileScreen() {
           />
         </Card>
 
-        {/* Logout */}
+        {/* ---------------- LOGOUT ---------------- */}
         <View className="mt-2">
           <TouchableOpacity
             className="w-full rounded-lg bg-primary py-3 items-center"
@@ -154,7 +209,11 @@ export default function ProfileScreen() {
                 {
                   text: "Log Out",
                   style: "destructive",
-                  onPress: () => showAlert("Logged Out"),
+                  onPress: async () => {
+                    await removeAccessToken();
+                    setUser(null);
+                    router.replace("/(auth)/login");
+                  },
                 },
               ])
             }
@@ -179,16 +238,7 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <View
-      className="mb-6 rounded-xl bg-card-light dark:bg-card-dark p-2 border border-border-light dark:border-border-dark"
-      style={{
-        elevation: 2,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-      }}
-    >
+    <View className="mb-6 rounded-xl bg-card-light dark:bg-card-dark p-2 border border-border-light dark:border-border-dark">
       <Text className="px-3 pt-3 pb-1 text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
         {title}
       </Text>

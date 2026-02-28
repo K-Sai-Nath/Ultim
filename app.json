@@ -19,7 +19,7 @@
       "softwareKeyboardLayoutMode": "pan",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.sai_nath.Ultim",
+      "package": "com.sai_nath.Ultim"
     },
     "web": {
       "output": "static",
@@ -36,7 +36,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#ff7b00"
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

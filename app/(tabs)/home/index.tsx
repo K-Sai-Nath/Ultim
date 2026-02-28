@@ -1,8 +1,13 @@
+import { useAuth } from "@/context/AuthContext";
+import { getAccessToken } from "@/services/authService";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
 import React from "react";
 import {
+  Alert,
   Dimensions,
   Image,
   ScrollView,
@@ -12,16 +17,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SwiperFlatList } from "react-native-swiper-flatlist";
-
 /* ---------------------------------- */
 /* MOCK DATA                           */
 /* ---------------------------------- */
-
-const user = {
-  name: "Alex",
-  credits: 120,
-  planCycle: "Monthly",
-};
 
 const banners = [
   {
@@ -71,42 +69,89 @@ const tryNewItems = [
   },
 ];
 
-const todayBookings = {
-  gym: {
-    booked: false,
-  },
-  badminton: {
-    booked: true,
-    time: "4:30 PM - 5:30 PM",
-  },
-};
-
 /* ---------------------------------- */
 /* SCREEN                              */
 /* ---------------------------------- */
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
   const handleTryNewNavigation = (title: string) => {
     switch (title) {
       case "Swimming":
-        router.push("/(stack)/activites/swimming/book/swimming");
+        Alert.alert("Swimming");
         break;
 
       case "Yoga":
-        router.push("/(stack)/activites/yoga/book/yoga");
+        Alert.alert("Yoga");
         break;
 
       case "Badminton":
-        router.push("/(stack)/activites/badminton/book/badminton");
+        Alert.alert("Badminton");
         break;
 
       default:
         router.push("/(tabs)/access");
     }
   };
+  const fetchMemberships = async () => {
+    const token = await getAccessToken();
+    if (!token) throw new Error("No token");
+
+    const res = await axios.get(
+      "https://ultim-server.vercel.app/api/memberships",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    return res.data.docs || [];
+  };
+
+  const fetchTodayBookings = async () => {
+    const token = await getAccessToken();
+    if (!token) throw new Error("No token");
+
+    const today = new Date().toISOString().split("T")[0];
+    console.log(today);
+    const res = await axios.get(
+      `https://ultim-server.vercel.app/api/bookings`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    return res.data || [];
+  };
+  const { data: memberships = [], isLoading: membershipsLoading } = useQuery({
+    queryKey: ["memberships"],
+    queryFn: fetchMemberships,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: todayBookings = [], isLoading: bookingsLoading } = useQuery({
+    queryKey: ["todayBookings"],
+    queryFn: fetchTodayBookings,
+    staleTime: 1000 * 60,
+  });
+  const today = new Date().toISOString().split("T")[0];
+
+  const todayBookingsList = (todayBookings?.docs ?? []).filter((b: any) =>
+    b.sessionDate.startsWith(today)
+  );
+  const gymMembership = memberships.find(
+    (m: any) => m.membershipPlan.type === "gym"
+  );
+  console.log(todayBookings);
+  const badmintonBooking = (todayBookingsList?.docs ?? []).find(
+    (b: any) => b.membership?.membershipPlan?.type === "badminton"
+  );
   return (
     <SafeAreaView
       edges={["top"]}
@@ -119,10 +164,10 @@ export default function HomeScreen() {
       <View className="flex-row items-center justify-between px-4 py-3">
         <View className="ml-3">
           <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
-            Welcome back, {user.name}
+            Welcome back, {user?.fullName}
           </Text>
           <Text className="text-xs font-bold tracking-wider text-primary">
-            OneAll Arena
+            {user?.tenants?.[0]?.Facility}
           </Text>
         </View>
 
@@ -207,24 +252,35 @@ export default function HomeScreen() {
             Today’s Booking
           </Text>
 
-          <TodayBookingCard
-            title="General Gym Session"
-            location="Main Fitness Center, Floor 2"
-            booked={todayBookings.gym.booked}
-            image="https://images.unsplash.com/photo-1558611848-73f7eb4001a1"
-            onGenerateQR={() => router.push("/(stack)/qr/1")}
-            onViewQR={() => router.push("/(stack)/qr/1")}
-          />
+          {/* Gym Membership Card */}
+          {gymMembership && (
+            <TodayBookingCard
+              title="General Gym Session"
+              location={gymMembership.tenant?.Facility ?? "Gym Facility"}
+              booked={true}
+              image="https://images.unsplash.com/photo-1558611848-73f7eb4001a1"
+              onGenerateQR={() => router.push("/(stack)/qr/1")}
+              onViewQR={() => router.push("/(stack)/qr/1")}
+            />
+          )}
 
-          {todayBookings.badminton.booked && (
+          {/* Badminton Booking Card */}
+          {badmintonBooking && (
             <TodayBookingCard
               title="Badminton Session"
-              time={todayBookings.badminton.time}
-              location="Court 2"
+              time={`${badmintonBooking} - ${badmintonBooking.endTime}`}
+              location={badmintonBooking.venue ?? "Badminton Court"}
               booked
               image="https://loremflickr.com/400/400/badminton"
               onViewQR={() => router.push("/(stack)/qr/1")}
             />
+          )}
+
+          {/* No bookings */}
+          {!gymMembership && !badmintonBooking && (
+            <Text className="text-text-secondary-light dark:text-text-secondary-dark ml-1">
+              No bookings for today
+            </Text>
           )}
         </View>
       </ScrollView>

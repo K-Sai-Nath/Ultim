@@ -1,8 +1,13 @@
+import { useAuth } from "@/context/AuthContext";
+import { checkAuth } from "@/services/authService";
 import { MaterialIcons } from "@expo/vector-icons";
+import axios from "axios";
 import { useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { useColorScheme } from "nativewind";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -17,15 +22,17 @@ export default function AuthScreen() {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
-
+  const [loading, setLoading] = useState(false);
   const iconColor = isDark ? "#E5E7EB" : "#6B7280";
   const placeholderColor = isDark ? "#9CA3AF" : "#6B7280";
-
+  const { setUser, user } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ email: "", password: "" });
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
-    {}
-  );
+  const [errors, setErrors] = useState({
+    email: "",
+    password: "",
+    toast: "",
+  });
 
   const updateField = (key: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -36,7 +43,11 @@ export default function AuthScreen() {
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const validate = () => {
-    const newErrors: typeof errors = {};
+    const newErrors: typeof errors = {
+      email: "",
+      password: "",
+      toast: "",
+    };
 
     if (!form.email.trim()) newErrors.email = "Email is required";
     else if (!isValidEmail(form.email)) newErrors.email = "Enter a valid email";
@@ -44,12 +55,48 @@ export default function AuthScreen() {
     if (!form.password) newErrors.password = "Password is required";
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return !newErrors.email && !newErrors.password;
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!validate()) return;
-    router.replace("/(tabs)/home");
+    let temp = { email: "", password: "", toast: "" };
+    try {
+      setLoading(true);
+      const res = await axios.post(
+        "https://ultim-server.vercel.app/api/users/login",
+        { email: form.email, password: form.password }
+      );
+      await SecureStore.setItemAsync("access_token", res.data.token, {
+        keychainAccessible: SecureStore.WHEN_UNLOCKED,
+      });
+      const data = await checkAuth();
+      const backendUser = data.user;
+      console.log(backendUser);
+      setUser({
+        id: String(backendUser.id),
+        fullName: backendUser.fullName,
+        email: backendUser.email,
+        role: backendUser.role,
+        tenants: backendUser.tenants.map((item: any) => ({
+          id: item.tenant.id,
+          Facility: item.tenant.Facility,
+          FacilityImage: item.tenant.FacilityImage,
+        })),
+      });
+      router.replace("/(tabs)/home");
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const message =
+          err.response?.data?.errors?.[0]?.message ||
+          err.response?.data?.message ||
+          "Something went wrong";
+        temp.toast = message;
+      }
+      setErrors(temp);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -112,7 +159,11 @@ export default function AuthScreen() {
                 </TouchableOpacity>
               }
             />
-
+            {errors.toast ? (
+              <Text className="text-red-500 text-sm mt-1 ml-1">
+                {errors.toast}
+              </Text>
+            ) : null}
             <TouchableOpacity
               className="items-end"
               onPress={() => router.push("/(auth)/(forgot-password)/email")}
@@ -129,8 +180,13 @@ export default function AuthScreen() {
             <TouchableOpacity
               className="h-12 bg-primary rounded-lg items-center justify-center"
               onPress={handleLogin}
+              disabled={loading}
             >
-              <Text className="text-white font-bold text-base">Login</Text>
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text className="text-white font-bold text-base">Login</Text>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity

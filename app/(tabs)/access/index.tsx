@@ -1,37 +1,32 @@
+import { getAccessToken } from "@/services/authService";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
 import React from "react";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-/* ---------------------------------- */
-/* MOCK DATA (replace with backend)   */
-/* ---------------------------------- */
-
-const ACTIVITIES = [
-  {
-    id: "gym",
-    title: "Gym & Fitness",
-    image: "https://images.unsplash.com/photo-1558611848-73f7eb4001a1",
-  },
-  {
-    id: "badminton",
-    title: "Badminton Court",
-    image: "https://loremflickr.com/400/400/badminton",
-  },
-  {
-    id: "swimming",
-    title: "Swimming Pool",
-    image: "https://loremflickr.com/400/400/swimming",
-  },
-  {
-    id: "yoga",
-    title: "Yoga Studio",
-    image: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b",
-  },
-];
-
+interface Membership {
+  id: number;
+  endDate: string;
+  availableCredits: number | null;
+  membershipPlan: {
+    id: number;
+    planName: string;
+    type: string;
+  };
+  tenant?: {
+    Facility?: string;
+  };
+}
 /* ---------------------------------- */
 /* SCREEN                              */
 /* ---------------------------------- */
@@ -42,6 +37,60 @@ export default function AccessScreen() {
   const isDark = colorScheme === "dark";
 
   const iconColor = isDark ? "#f5f5f5" : "#000";
+
+  /* ---------------------------------- */
+  /* FETCH MEMBERSHIPS                  */
+  /* ---------------------------------- */
+
+  const fetchMemberships = async () => {
+    const token = await getAccessToken();
+    if (!token) throw new Error("No token");
+
+    const res = await axios.get(
+      "https://ultim-server.vercel.app/api/memberships/",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    return res.data.docs || [];
+  };
+
+  const {
+    data: memberships = [],
+    isLoading,
+    isError,
+  } = useQuery<Membership[]>({
+    queryKey: ["memberships"],
+    queryFn: fetchMemberships,
+    staleTime: 1000 * 60 * 5, // 5 minutes cache
+  });
+  /* ---------------------------------- */
+  /* FILTER ACTIVE MEMBERSHIPS          */
+  /* ---------------------------------- */
+  const activeMemberships = memberships.filter(
+    (m: { endDate: string | number | Date }) => new Date(m.endDate) > new Date()
+  );
+  /* ---------------------------------- */
+  /* IMAGE BASED ON TYPE                */
+  /* ---------------------------------- */
+  console.log(activeMemberships);
+  const getImageForType = (type: string) => {
+    switch (type) {
+      case "badminton":
+        return "https://loremflickr.com/400/400/badminton";
+      case "gym":
+        return "https://images.unsplash.com/photo-1558611848-73f7eb4001a1";
+      case "swimming":
+        return "https://loremflickr.com/400/400/swimming";
+      case "yoga":
+        return "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b";
+      default:
+        return "https://images.unsplash.com/photo-1558611848-73f7eb4001a1";
+    }
+  };
 
   return (
     <SafeAreaView
@@ -73,18 +122,42 @@ export default function AccessScreen() {
         contentContainerStyle={{ paddingBottom: 100 }}
         className="px-4"
       >
-        <View className="gap-4 mt-2">
-          {ACTIVITIES.map((item) => (
-            <ActivityCard
-              key={item.id}
-              title={item.title}
-              image={item.image}
-              onPress={() =>
-                router.push(`/(stack)/activites/${item.id}/book/${item.id}`)
-              }
-            />
-          ))}
-        </View>
+        {isLoading ? (
+          <View className="mt-20 items-center">
+            <ActivityIndicator size="large" />
+            <Text className="mt-4 text-text-secondary-light dark:text-text-secondary-dark">
+              Loading your access...
+            </Text>
+          </View>
+        ) : activeMemberships.length === 0 ? (
+          <View className="mt-20 items-center">
+            <MaterialIcons name="event-busy" size={50} color="#999" />
+            <Text className="mt-4 text-lg text-text-secondary-light dark:text-text-secondary-dark">
+              No Active Memberships
+            </Text>
+            <Text className="mt-2 text-sm text-gray-400 text-center px-10">
+              Purchase a membership to start booking activities.
+            </Text>
+          </View>
+        ) : (
+          <View className="gap-4 mt-2">
+            {activeMemberships.map((item) => (
+              <ActivityCard
+                key={item.id}
+                title={item.membershipPlan.planName}
+                facility={item.tenant?.Facility || ""}
+                image={getImageForType(item.membershipPlan.type)}
+                expiryDate={item.endDate}
+                credits={item.availableCredits}
+                onPress={() => {
+                  console.log("Item:", item);
+                  console.log("Item Id:", item.id);
+                  router.push(`/(stack)/memberships/book/${item.id}`);
+                }}
+              />
+            ))}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -96,13 +169,21 @@ export default function AccessScreen() {
 
 function ActivityCard({
   title,
+  facility,
   image,
+  expiryDate,
+  credits,
   onPress,
 }: {
   title: string;
+  facility: string;
   image: string;
+  expiryDate: string;
+  credits: number | null;
   onPress: () => void;
 }) {
+  const formattedDate = new Date(expiryDate).toLocaleDateString();
+
   return (
     <View
       className="
@@ -119,7 +200,7 @@ function ActivityCard({
         elevation: 2,
       }}
     >
-      {/* Image — LEFT */}
+      {/* Image */}
       <View className="w-28 aspect-square rounded-lg overflow-hidden">
         <Image
           source={{ uri: image }}
@@ -129,17 +210,26 @@ function ActivityCard({
         <View className="absolute inset-0 bg-black/10" />
       </View>
 
-      {/* Content — RIGHT */}
+      {/* Content */}
       <View className="flex-1 justify-center">
-        <Text className="text-xl font-bold text-text-primary-light dark:text-text-primary-dark">
+        <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
           {title}
         </Text>
 
-        {/* Book Now Button */}
+        <Text className="text-sm text-gray-500 mt-1">{facility}</Text>
+
+        <Text className="text-xs text-gray-400 mt-1">
+          Expires on: {formattedDate}
+        </Text>
+
+        {credits !== null && (
+          <Text className="text-xs text-gray-400 mt-1">Credits: {credits}</Text>
+        )}
+
         <TouchableOpacity
           onPress={onPress}
           activeOpacity={0.85}
-          className="mt-2 px-4 py-2 bg-primary rounded-2xl self-start"
+          className="mt-3 px-4 py-2 bg-primary rounded-2xl self-start"
         >
           <Text className="text-sm font-semibold text-black dark:text-white">
             Book Now
