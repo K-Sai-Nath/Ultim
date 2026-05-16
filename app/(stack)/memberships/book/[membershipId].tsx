@@ -159,6 +159,7 @@ export default function SlotsScreen() {
                 }
               );
               queryClient.invalidateQueries({ queryKey: ["bookings"] });
+              queryClient.invalidateQueries({ queryKey: ["plans"] });
               Alert.alert(
                 "Booking Confirmed 🎉",
                 "Check bookings tab for details"

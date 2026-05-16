@@ -1,10 +1,11 @@
 import { useAuth } from "@/context/AuthContext";
 import { getAccessToken, removeAccessToken } from "@/services/authService";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -36,34 +37,27 @@ export default function ProfileScreen() {
   const iconPrimary = isDark ? "#f5f5f5" : "#000000";
   const iconSecondary = isDark ? "#a1a1aa" : "#9ca3af";
 
-  const [memberships, setMemberships] = useState<Membership[]>([]);
-  const [loading, setLoading] = useState(true);
+  const fetchMemberships = async (): Promise<Membership[]> => {
+    const token = await getAccessToken();
+    if (!token) throw new Error("No token");
 
-  useEffect(() => {
-    const fetchMemberships = async () => {
-      try {
-        setLoading(true);
-        const token = await getAccessToken();
-
-        const res = await axios.get(
-          "https://ultim-server.vercel.app/api/memberships",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        setMemberships(res.data.docs || []);
-      } catch (err) {
-        console.log("Membership fetch error:", err);
-      } finally {
-        setLoading(false);
+    const res = await axios.get(
+      "https://ultim-server.vercel.app/api/memberships",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       }
-    };
+    );
 
-    fetchMemberships();
-  }, []);
+    return res.data.docs || [];
+  };
+
+  const { data: plans = [], isLoading } = useQuery({
+    queryKey: ["plans"],
+    queryFn: fetchMemberships,
+    staleTime: 1000 * 60 * 5,
+  });
 
   return (
     <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
@@ -90,14 +84,14 @@ export default function ProfileScreen() {
       >
         {/* ---------------- MEMBERSHIP GRID ---------------- */}
         <Card title="Your Plans">
-          {loading ? (
+          {isLoading ? (
             <View className="items-center py-6">
               <ActivityIndicator size="large" color="#ff7b00" />
               <Text className="mt-2 text-sm text-text-secondary-light dark:text-text-secondary-dark">
                 Loading plans...
               </Text>
             </View>
-          ) : memberships.length === 0 ? (
+          ) : plans.length === 0 ? (
             <View className="items-center py-6">
               <MaterialIcons
                 name="card-membership"
@@ -110,7 +104,7 @@ export default function ProfileScreen() {
             </View>
           ) : (
             <View className="flex-row flex-wrap justify-between gap-y-4 px-2 pb-3">
-              {memberships.map((item) => (
+              {plans.map((item) => (
                 <TouchableOpacity
                   key={item.id}
                   onPress={() =>

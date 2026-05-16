@@ -21,7 +21,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function BookingAccessScreen() {
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
-  console.log(bookingId);
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
@@ -96,7 +95,7 @@ export default function BookingAccessScreen() {
       <SafeAreaView className="flex-1 items-center justify-center bg-background-light dark:bg-background-dark">
         <ActivityIndicator size="large" color="#ff7b00" />
         <Text className="mt-5 text-text-primary-light dark:text-text-primary-dark text-base font-medium">
-          Loading access...
+          Loading QR...
         </Text>
       </SafeAreaView>
     );

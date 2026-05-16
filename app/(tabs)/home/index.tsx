@@ -42,33 +42,6 @@ const banners = [
   },
 ];
 
-const tryNewItems = [
-  {
-    id: "1",
-    title: "Swimming",
-    venue: "Aqua Sports Complex",
-    location: "Block A • Pool Area",
-    credits: 120,
-    image: "https://images.unsplash.com/photo-1546519638-68e109498ffc",
-  },
-  {
-    id: "2",
-    title: "Zumba",
-    venue: "Dance Studio",
-    location: "Fitness Floor • Hall 3",
-    credits: 80,
-    image: "https://images.unsplash.com/photo-1518611012118-696072aa579a",
-  },
-  {
-    id: "3",
-    title: "CrossFit",
-    venue: "Iron Box Arena",
-    location: "Ground Floor • Zone C",
-    credits: 150,
-    image: "https://images.unsplash.com/photo-1517964603305-11c0f6f66012",
-  },
-];
-
 /* ---------------------------------- */
 /* SCREEN                              */
 /* ---------------------------------- */
