@@ -39,14 +39,14 @@ export default function BookingAccessScreen() {
 
         const qrRes = await axios.post(
           `https://ultim-server.vercel.app/api/bookings/${Number(
-            bookingId
+            bookingId,
           )}/generate-qr`,
           {},
           {
             headers: {
               Authorization: `Bearer ${token}`,
             },
-          }
+          },
         );
         console.log(qrRes.data.token);
         setQrToken(qrRes.data.token);
@@ -70,13 +70,13 @@ export default function BookingAccessScreen() {
         const token = await getAccessToken();
         const res = await axios.get(
           `https://ultim-server.vercel.app/api/bookings/${Number(
-            bookingId
+            bookingId,
           )}?depth=1`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
             },
-          }
+          },
         );
         setBooking(res.data);
       } catch (err) {

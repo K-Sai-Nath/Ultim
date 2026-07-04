@@ -7,6 +7,7 @@ export default function MobileOTPLayout() {
         options={{ headerShown: false }}
       ></Stack.Screen>
       <Stack.Screen name="otp" options={{ headerShown: false }}></Stack.Screen>
+      <Stack.Screen name="name" options={{ headerShown: false }}></Stack.Screen>
     </Stack>
   );
 }

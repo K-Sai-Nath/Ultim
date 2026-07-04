@@ -45,7 +45,7 @@ export default function SlotsScreen() {
 
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
   const [selectedStartHour, setSelectedStartHour] = useState<number | null>(
-    null
+    null,
   );
   const [duration, setDuration] = useState(1);
   const [bookingLoading, setBookingLoading] = useState(false);
@@ -64,7 +64,7 @@ export default function SlotsScreen() {
             headers: {
               Authorization: `Bearer ${token}`,
             },
-          }
+          },
         );
         setPlan(res.data);
       } catch (err) {
@@ -124,7 +124,7 @@ export default function SlotsScreen() {
     Alert.alert(
       "Confirm Booking",
       `Book on ${selectedDate.toDateString()} from ${formatHour(
-        selectedStartHour
+        selectedStartHour,
       )} to ${formatHour(endHour!)}?`,
       [
         { text: "Cancel", style: "cancel" },
@@ -140,7 +140,7 @@ export default function SlotsScreen() {
                 user?.id,
                 membershipId,
                 selectedDate.toISOString(),
-                formatHour(selectedStartHour)
+                formatHour(selectedStartHour),
               );
               await axios.post(
                 "https://ultim-server.vercel.app/api/bookings",
@@ -156,13 +156,13 @@ export default function SlotsScreen() {
                   headers: {
                     Authorization: `Bearer ${token}`,
                   },
-                }
+                },
               );
               queryClient.invalidateQueries({ queryKey: ["bookings"] });
               queryClient.invalidateQueries({ queryKey: ["plans"] });
               Alert.alert(
                 "Booking Confirmed 🎉",
-                "Check bookings tab for details"
+                "Check bookings tab for details",
               );
 
               router.back(); // optional: go back after booking
@@ -186,7 +186,7 @@ export default function SlotsScreen() {
             }
           },
         },
-      ]
+      ],
     );
   };
   /* ---------------------------------- */
@@ -196,10 +196,7 @@ export default function SlotsScreen() {
   if (loading || !plan) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-background-light dark:bg-background-dark">
-        <ActivityIndicator
-          size="large"
-          color={isDark ? "#ffffff" : "#000000"}
-        />
+        <ActivityIndicator size="large" color="#ff7b00" />
         <Text className="mt-4 text-text-secondary-light dark:text-text-secondary-dark">
           Loading slots...
         </Text>

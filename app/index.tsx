@@ -46,6 +46,6 @@ export default function Index() {
   return authenticated ? (
     <Redirect href="/(tabs)/home" />
   ) : (
-    <Redirect href="/welcome" />
+    <Redirect href="/signup" />
   );
 }

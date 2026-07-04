@@ -10,10 +10,10 @@ export const removeAccessToken = async () => {
 export const checkAuth = async () => {
   try {
     const token = await getAccessToken();
+    console.log(token)
     if (!token) {
       return { authenticated: false };
     }
-    console.log(token);
     const res = await axios.get(
       "https://ultim-server.vercel.app/api/users/me",
       {
@@ -22,7 +22,6 @@ export const checkAuth = async () => {
         },
       }
     );
-    console.log(res.data);
     if (!res.data.user) {
       return { authenticated: false };
     }

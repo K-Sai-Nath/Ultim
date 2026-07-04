@@ -39,32 +39,44 @@ export default function BookingsScreen() {
   /* ---------------------------------- */
 
   const fetchBookings = async ({ pageParam = 1 }: { pageParam?: number }) => {
-    const token = await getAccessToken();
-    if (!token) throw new Error("No token");
-
-    const res = await axios.get(
-      `https://ultim-server.vercel.app/api/bookings?page=${pageParam}&limit=10&sort=-createdAt`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        throw new Error("Please sign in again to view your bookings.");
       }
-    );
 
-    return {
-      docs: res.data.docs || [],
-      nextPage: res.data.hasNextPage ? res.data.nextPage : undefined,
-    };
+      const res = await axios.get(
+        `https://ultim-server.vercel.app/api/bookings?page=${pageParam}&limit=10&sort=-createdAt`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      return {
+        docs: res.data?.docs || [],
+        nextPage: res.data?.hasNextPage ? res.data?.nextPage : undefined,
+      };
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to load bookings.";
+      throw new Error(message);
+    }
   };
 
   const {
     data,
     isLoading,
     isError,
+    error,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
     refetch,
+    isRefetching,
   } = useInfiniteQuery({
     queryKey: ["bookings"],
     queryFn: fetchBookings,
@@ -102,6 +114,12 @@ export default function BookingsScreen() {
   }, [bookings]);
 
   const filteredData = activeTab === "upcoming" ? upcoming : past;
+  const emptyStateMessage =
+    activeTab === "upcoming"
+      ? "No upcoming bookings found"
+      : "No past bookings found";
+  const errorMessage =
+    error instanceof Error ? error.message : "Failed to load bookings.";
 
   const iconColor = isDark ? "#f5f5f5" : "#000";
 
@@ -180,8 +198,8 @@ export default function BookingsScreen() {
           <ActivityIndicator size="large" color="#ff7b00" />
         </View>
       ) : isError ? (
-        <View className="flex-1 justify-center items-center">
-          <Text className="text-red-500">Failed to load bookings</Text>
+        <View className="flex-1 justify-center items-center px-6">
+          <Text className="text-red-500 text-center">{errorMessage}</Text>
           <TouchableOpacity
             onPress={() => refetch()}
             className="mt-4 px-4 py-2 bg-primary rounded-xl"
@@ -205,8 +223,8 @@ export default function BookingsScreen() {
             }
           }}
           onEndReachedThreshold={0.5}
-          refreshing={isLoading}
-          onRefresh={refetch}
+          refreshing={isRefetching}
+          onRefresh={() => refetch()}
           ListFooterComponent={
             isFetchingNextPage ? (
               <ActivityIndicator
@@ -218,9 +236,10 @@ export default function BookingsScreen() {
           }
           ListEmptyComponent={
             !isLoading && !isFetchingNextPage ? (
-              <View className="py-20 items-center">
-                <Text className="text-text-secondary-light dark:text-text-secondary-dark">
-                  No bookings found
+              <View className="mt-20 items-center px-6">
+                <MaterialIcons name="event-busy" size={50} color="#999" />
+                <Text className="mt-4 text-lg text-text-secondary-light dark:text-text-secondary-dark text-center">
+                  {emptyStateMessage}
                 </Text>
               </View>
             ) : null

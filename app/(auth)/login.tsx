@@ -22,57 +22,85 @@ export default function AuthScreen() {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
+
+  const { setUser } = useAuth();
+
   const [loading, setLoading] = useState(false);
-  const iconColor = isDark ? "#E5E7EB" : "#6B7280";
-  const placeholderColor = isDark ? "#9CA3AF" : "#6B7280";
-  const { setUser, user } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
-  const [form, setForm] = useState({ email: "", password: "" });
+
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+  });
+
   const [errors, setErrors] = useState({
     email: "",
     password: "",
     toast: "",
   });
 
+  const iconColor = isDark ? "#E5E7EB" : "#6B7280";
+  const placeholderColor = isDark ? "#9CA3AF" : "#6B7280";
+
   const updateField = (key: keyof typeof form, value: string) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-    setErrors((prev) => ({ ...prev, [key]: undefined }));
+    setForm((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+
+    setErrors((prev) => ({
+      ...prev,
+      [key]: "",
+      toast: "",
+    }));
   };
 
   const isValidEmail = (email: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const validate = () => {
-    const newErrors: typeof errors = {
+    const newErrors = {
       email: "",
       password: "",
       toast: "",
     };
 
-    if (!form.email.trim()) newErrors.email = "Email is required";
-    else if (!isValidEmail(form.email)) newErrors.email = "Enter a valid email";
+    if (!form.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!isValidEmail(form.email.trim())) {
+      newErrors.email = "Enter a valid email";
+    }
 
-    if (!form.password) newErrors.password = "Password is required";
+    if (!form.password) {
+      newErrors.password = "Password is required";
+    }
 
     setErrors(newErrors);
+
     return !newErrors.email && !newErrors.password;
   };
 
   const handleLogin = async () => {
     if (!validate()) return;
-    let temp = { email: "", password: "", toast: "" };
+
     try {
       setLoading(true);
+
       const res = await axios.post(
         "https://ultim-server.vercel.app/api/users/login",
-        { email: form.email, password: form.password }
+        {
+          email: form.email.trim(),
+          password: form.password,
+        },
       );
+
       await SecureStore.setItemAsync("access_token", res.data.token, {
         keychainAccessible: SecureStore.WHEN_UNLOCKED,
       });
+
       const data = await checkAuth();
       const backendUser = data.user;
-      console.log(backendUser);
+
       setUser({
         id: String(backendUser.id),
         fullName: backendUser.fullName,
@@ -84,16 +112,23 @@ export default function AuthScreen() {
           FacilityImage: item.tenant.FacilityImage,
         })),
       });
+
       router.replace("/(tabs)/home");
     } catch (err) {
+      let message = "Something went wrong. Please try again.";
+
       if (axios.isAxiosError(err)) {
-        const message =
+        message =
           err.response?.data?.errors?.[0]?.message ||
           err.response?.data?.message ||
-          "Something went wrong";
-        temp.toast = message;
+          message;
       }
-      setErrors(temp);
+
+      setErrors({
+        email: "",
+        password: "",
+        toast: message,
+      });
     } finally {
       setLoading(false);
     }
@@ -107,7 +142,7 @@ export default function AuthScreen() {
         className="flex-1"
       >
         <View className="flex-1 px-6">
-          {/* Top Section */}
+          {/* Header */}
           <View className="items-center mt-10 mb-8">
             <Image
               source={require("../../assets/images/Login.png")}
@@ -118,6 +153,7 @@ export default function AuthScreen() {
             <Text className="mt-6 text-3xl font-bold text-text-primary-light dark:text-text-primary-dark">
               Welcome Back
             </Text>
+
             <Text className="mt-1 text-sm text-text-secondary-light dark:text-text-secondary-dark">
               Login to continue
             </Text>
@@ -132,9 +168,11 @@ export default function AuthScreen() {
               placeholder="Enter your email"
               placeholderTextColor={placeholderColor}
               keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
               value={form.email}
               error={errors.email}
-              onChangeText={(v: string) => updateField("email", v)}
+              onChangeText={(value: string) => updateField("email", value)}
             />
 
             <Input
@@ -146,10 +184,11 @@ export default function AuthScreen() {
               secureTextEntry={!showPassword}
               value={form.password}
               error={errors.password}
-              onChangeText={(v: string) => updateField("password", v)}
+              onChangeText={(value: string) => updateField("password", value)}
               rightIcon={
                 <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
+                  onPress={() => setShowPassword((prev) => !prev)}
+                  activeOpacity={0.7}
                 >
                   <MaterialIcons
                     name={showPassword ? "visibility" : "visibility-off"}
@@ -159,61 +198,76 @@ export default function AuthScreen() {
                 </TouchableOpacity>
               }
             />
+
             {errors.toast ? (
-              <Text className="text-red-500 text-sm mt-1 ml-1">
+              <Text className="ml-1 mt-1 text-sm text-red-500">
                 {errors.toast}
               </Text>
             ) : null}
+
             <TouchableOpacity
               className="items-end"
               onPress={() => router.push("/(auth)/(forgot-password)/email")}
             >
-              <Text className="text-sm text-primary font-medium">
+              <Text className="text-sm font-medium text-primary">
                 Forgot password?
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* Bottom Actions */}
-          {/* Actions */}
+          {/* Buttons */}
           <View className="mt-6 gap-3">
             <TouchableOpacity
-              className="h-12 bg-primary rounded-lg items-center justify-center"
+              className="h-12 items-center justify-center rounded-lg bg-primary"
               onPress={handleLogin}
               disabled={loading}
+              activeOpacity={0.8}
             >
               {loading ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text className="text-white font-bold text-base">Login</Text>
+                <Text className="text-base font-bold text-white">Login</Text>
               )}
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => router.push("/(auth)/(mobile-otp)/mobile")}
-              className="h-12 border border-primary rounded-lg items-center justify-center"
+              className="h-12 items-center justify-center rounded-lg border border-primary"
+              activeOpacity={0.8}
             >
-              <Text className="text-primary font-semibold">Login with OTP</Text>
+              <Text className="font-semibold text-primary">Login with OTP</Text>
             </TouchableOpacity>
           </View>
-          <Text className="mt-4 text-xs text-center text-text-secondary-light dark:text-text-secondary-dark">
+
+          {/* Terms */}
+          <Text className="mt-4 text-center text-xs text-text-secondary-light dark:text-text-secondary-dark">
             By continuing, you agree to our{" "}
             <Text
-              className="text-primary font-medium"
+              className="font-medium text-primary"
               onPress={() => router.push("/(stack)/termsConditions")}
             >
               Terms & Conditions
             </Text>
           </Text>
+
+          {/* Create Account */}
+          <View className="mt-6 flex-row items-center justify-center">
+            <Text className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
+              Don&apos;t have an account?{" "}
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => router.push("/(auth)/signup")}
+              activeOpacity={0.7}
+            >
+              <Text className="text-sm font-bold text-primary">Create one</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-
-/* ---------------------------------- */
-/* INPUT COMPONENT                     */
-/* ---------------------------------- */
 
 function Input({ label, icon, iconColor, error, rightIcon, ...props }: any) {
   return (
@@ -222,16 +276,26 @@ function Input({ label, icon, iconColor, error, rightIcon, ...props }: any) {
         {label}
       </Text>
 
-      <View className="flex-row items-center h-12 rounded-lg border border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark px-3">
+      <View
+        className={`flex-row items-center h-12 rounded-lg border px-3 bg-background-light dark:bg-background-dark ${
+          error
+            ? "border-red-500"
+            : "border-border-light dark:border-border-dark"
+        }`}
+      >
         <MaterialIcons name={icon} size={20} color={iconColor} />
+
         <TextInput
-          className="flex-1 ml-2 text-sm text-text-primary-light dark:text-text-primary-dark"
+          className="ml-2 flex-1 text-sm text-text-primary-light dark:text-text-primary-dark"
           {...props}
         />
+
         {rightIcon}
       </View>
 
-      {error && <Text className="mt-1 text-xs text-red-500">{error}</Text>}
+      {error ? (
+        <Text className="mt-1 text-xs text-red-500">{error}</Text>
+      ) : null}
     </View>
   );
 }

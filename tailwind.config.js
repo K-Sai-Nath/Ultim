@@ -5,6 +5,7 @@ module.exports = {
     "./app/**/*.{js,jsx,ts,tsx}",
     "./components/**/*.{js,jsx,ts,tsx}",
   ],
+
   presets: [require("nativewind/preset")],
 
   darkMode: "class",
@@ -12,19 +13,30 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: "#FF9500",
+        // Main orange used for buttons, selected tabs, loaders, icons
+        primary: "#FF7A00",
 
-        "background-light": "#F8FAFC",
+        // Optional lighter orange for gradients / highlights
+        "primary-light": "#FF9D2E",
+
+        // Light mode
+        "background-light": "#FFFFFF",
         "card-light": "#FFFFFF",
-        "border-light": "#E5E7EB",
-        "text-primary-light": "#111827",
-        "text-secondary-light": "#6B7280",
+        "border-light": "#F0DED0",
+        "text-primary-light": "#1D1A18",
+        "text-secondary-light": "#786D66",
 
-        "background-dark": "#0A0A0A", // deeper black
-        "card-dark": "#1a1a1a", // slightly lifted card
-        "border-dark": "#1F1F1F", // very subtle border
-        "text-primary-dark": "#F5F5F5",
-        "text-secondary-dark": "#9CA3AF",
+        // Dark mode — matches the black
+        "background-dark": "#0B0B0C",
+        "card-dark": "#171719",
+        "border-dark": "#29292D",
+        "text-primary-dark": "#F8F8F8",
+        "text-secondary-dark": "#A1A1AA",
+
+        // Extra useful colors for this CourtHub-style UI
+        "orange-dark": "#D95700",
+        "orange-soft": "#FFE1C2",
+        success: "#49B950",
       },
 
       fontFamily: {

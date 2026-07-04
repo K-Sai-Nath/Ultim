@@ -52,7 +52,7 @@ export default function AccessScreen() {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
+      },
     );
 
     return res.data.docs || [];
@@ -71,7 +71,8 @@ export default function AccessScreen() {
   /* FILTER ACTIVE MEMBERSHIPS          */
   /* ---------------------------------- */
   const activeMemberships = memberships.filter(
-    (m: { endDate: string | number | Date }) => new Date(m.endDate) > new Date()
+    (m: { endDate: string | number | Date }) =>
+      new Date(m.endDate) > new Date(),
   );
   /* ---------------------------------- */
   /* IMAGE BASED ON TYPE                */
@@ -124,7 +125,8 @@ export default function AccessScreen() {
       >
         {isLoading ? (
           <View className="mt-20 items-center">
-            <ActivityIndicator size="large" />
+            <ActivityIndicator size="large" color="#FF9500" />
+
             <Text className="mt-4 text-text-secondary-light dark:text-text-secondary-dark">
               Loading your access...
             </Text>
@@ -140,7 +142,11 @@ export default function AccessScreen() {
             </Text>
           </View>
         ) : (
-          <View className="gap-4 mt-2">
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 0 }}
+          >
             {activeMemberships.map((item) => (
               <ActivityCard
                 key={item.id}
@@ -156,7 +162,7 @@ export default function AccessScreen() {
                 }}
               />
             ))}
-          </View>
+          </ScrollView>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -185,57 +191,47 @@ function ActivityCard({
   const formattedDate = new Date(expiryDate).toLocaleDateString();
 
   return (
-    <View
-      className="
-        flex-row items-center gap-4
-        rounded-xl p-4
-        bg-card-light dark:bg-card-dark
-        border border-border-light dark:border-border-dark
-      "
-      style={{
-        shadowColor: "#000",
-        shadowOpacity: 0.04,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 6 },
-        elevation: 2,
-      }}
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.9}
+      className="w-72 mr-4 rounded-xl overflow-hidden bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark"
     >
       {/* Image */}
-      <View className="w-28 aspect-square rounded-lg overflow-hidden">
-        <Image
-          source={{ uri: image }}
-          className="w-full h-full"
-          resizeMode="cover"
-        />
-        <View className="absolute inset-0 bg-black/10" />
-      </View>
+      <Image
+        source={{ uri: image }}
+        className="w-full h-48"
+        resizeMode="cover"
+      />
 
       {/* Content */}
-      <View className="flex-1 justify-center">
-        <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
+      <View className="p-4">
+        <Text
+          numberOfLines={2}
+          className="text-base font-bold text-text-primary-light dark:text-text-primary-dark"
+        >
           {title}
         </Text>
 
-        <Text className="text-sm text-gray-500 mt-1">{facility}</Text>
+        <View className="flex-row items-center mt-3">
+          <MaterialIcons name="location-on" size={14} color="#FF9500" />
+          <Text
+            numberOfLines={1}
+            className="ml-1 text-xs text-text-secondary-light dark:text-text-secondary-dark"
+          >
+            {facility}
+          </Text>
+        </View>
 
-        <Text className="text-xs text-gray-400 mt-1">
-          Expires on: {formattedDate}
+        <Text className="text-xs text-text-secondary-light dark:text-text-secondary-dark mt-3">
+          Expires: {formattedDate}
         </Text>
 
         {credits !== null && (
-          <Text className="text-xs text-gray-400 mt-1">Credits: {credits}</Text>
-        )}
-
-        <TouchableOpacity
-          onPress={onPress}
-          activeOpacity={0.85}
-          className="mt-3 px-4 py-2 bg-primary rounded-2xl self-start"
-        >
-          <Text className="text-sm font-semibold text-black dark:text-white">
-            Book Now
+          <Text className="text-xs text-primary mt-1 font-semibold">
+            {credits} Credits
           </Text>
-        </TouchableOpacity>
+        )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }

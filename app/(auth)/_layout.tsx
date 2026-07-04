@@ -7,6 +7,10 @@ export default function AuthLayout() {
         options={{ headerShown: false }}
       ></Stack.Screen>
       <Stack.Screen
+        name="signup"
+        options={{ headerShown: false }}
+      ></Stack.Screen>
+      <Stack.Screen
         name="(mobile-otp)"
         options={{ headerShown: false }}
       ></Stack.Screen>
