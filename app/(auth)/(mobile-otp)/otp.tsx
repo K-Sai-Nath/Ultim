@@ -54,10 +54,9 @@ const {setUser}=useAuth()
   /* ===== Resend OTP ===== */
   const handleResend = async () => {
     if (!canResend) return;
-
     setLoading(true);
     setError("");
-setOtp("");
+  setOtp("");
     try {
       const response = await axios.post(
         "https://ultim-server.vercel.app/api/users/send-otp",
@@ -133,16 +132,11 @@ setOtp("");
         fullName: backendUser.fullName,
         email: backendUser.email,
         role: backendUser.role,
-        tenants: backendUser.tenants.map((item: any) => ({
-          id: item.tenant.id,
-          Facility: item.tenant.Facility,
-          FacilityImage: item.tenant.FacilityImage,
-        })),
       });
           if(response.data.user.fullName==null || response.data.user.fullName==""){
             router.push("/(auth)/(mobile-otp)/name");
           }else{
-            router.push("/(tabs)/home");
+            router.replace("/(tabs)/home");
           }
         
       }

@@ -210,9 +210,7 @@ export default function HomeScreen() {
             Welcome back, {user?.fullName}
           </Text>
 
-          <Text className="text-xs font-bold tracking-wider text-white/90">
-            {user?.tenants?.[0]?.Facility}
-          </Text>
+        
         </View>
 
         <TouchableOpacity
@@ -570,7 +568,7 @@ export default function HomeScreen() {
 
 function SectionTitle({ title }: { title: string }) {
   return (
-    <View className="px-4 mt-10 mb-3">
+    <View className="px-4 mt-5 mb-3">
       <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark ml-1">
         {title}
       </Text>

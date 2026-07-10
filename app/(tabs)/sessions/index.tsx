@@ -8,10 +8,9 @@ import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -20,23 +19,6 @@ export default function BookingsScreen() {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
-  const getImageForType = (type?: string) => {
-    switch (type) {
-      case "badminton":
-        return "https://loremflickr.com/400/400/badminton";
-      case "gym":
-        return "https://images.unsplash.com/photo-1558611848-73f7eb4001a1";
-      case "swimming":
-        return "https://loremflickr.com/400/400/swimming";
-      case "yoga":
-        return "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b";
-      default:
-        return "https://images.unsplash.com/photo-1517836357463-d25dfeac3438";
-    }
-  };
-  /* ---------------------------------- */
-  /* FETCH BOOKINGS (PAGINATED)         */
-  /* ---------------------------------- */
 
   const fetchBookings = async ({ pageParam = 1 }: { pageParam?: number }) => {
     try {
@@ -87,10 +69,6 @@ export default function BookingsScreen() {
 
   const bookings = data?.pages.flatMap((page) => page.docs) || [];
 
-  /* ---------------------------------- */
-  /* SPLIT UPCOMING / PAST              */
-  /* ---------------------------------- */
-
   const now = new Date();
 
   const upcoming = useMemo(() => {
@@ -123,22 +101,51 @@ export default function BookingsScreen() {
 
   const iconColor = isDark ? "#f5f5f5" : "#000";
 
-  /* ---------------------------------- */
-  /* RENDER ITEM                        */
-  /* ---------------------------------- */
+  // Formats a 24h "HH:mm" string to "h:mm AM/PM"
+  const formatTime = (time: string) => {
+    const [hourStr, minuteStr] = time.split(":");
+    const hour = parseInt(hourStr, 10);
+    const minute = parseInt(minuteStr, 10);
+    const period = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+    return `${hour12}:${minute.toString().padStart(2, "0")} ${period}`;
+  };
+
+  // Adds `duration` hours (can be fractional, e.g. 1.5) to a "HH:mm" start time
+  const addDuration = (time: string, duration: number) => {
+    const [hourStr, minuteStr] = time.split(":");
+    const start = new Date();
+    start.setHours(parseInt(hourStr, 10));
+    start.setMinutes(parseInt(minuteStr, 10));
+    start.setMinutes(start.getMinutes() + Math.round((duration || 0) * 60));
+    const hh = start.getHours().toString().padStart(2, "0");
+    const mm = start.getMinutes().toString().padStart(2, "0");
+    return `${hh}:${mm}`;
+  };
 
   const renderItem = ({ item }: any) => {
     const dateObj = new Date(item.sessionDate);
-    const dateString = dateObj.toDateString();
+    const dayNumber = dateObj.toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "short",
+    });
+    const weekday = dateObj.toLocaleDateString("en-US", { weekday: "short" });
+
+    const startTime = formatTime(item.sessionTime);
+    const endTime = formatTime(addDuration(item.sessionTime, item.duration));
+
     const membershipType = item.membership?.membershipPlan?.type;
+
     return (
       <BookingCard
         data={{
-          title: item.membership?.membershipPlan?.planName || "Session",
-          subtitle: item.tenant?.Facility,
-          date: `${dateString} - ${item.sessionTime}`,
-          location: item.tenant?.Facility,
-          image: getImageForType(membershipType),
+          type: membershipType,
+          date: dayNumber,
+          weekday,
+          timeRange: `${startTime} - ${endTime}`,
+          duration: item.duration,
+          venue: item.tenant?.Facility,
+          address: item.tenant?.address,
         }}
         primaryAction={activeTab === "upcoming" ? "View QR" : null}
         onPrimaryPress={() => router.push(`/(stack)/qr/${item.id}`)}
@@ -153,7 +160,6 @@ export default function BookingsScreen() {
         backgroundColor: isDark ? "#0f0f0f" : "#ffffff",
       }}
     >
-      {/* Header */}
       <View className="flex-row items-center px-4 py-3">
         <TouchableOpacity
           onPress={() => router.back()}
@@ -169,7 +175,6 @@ export default function BookingsScreen() {
         <View className="w-10 h-10" />
       </View>
 
-      {/* Tabs */}
       <View className="flex-row border-b border-border-light dark:border-border-dark">
         {["upcoming", "past"].map((tab) => (
           <TouchableOpacity
@@ -192,7 +197,6 @@ export default function BookingsScreen() {
         ))}
       </View>
 
-      {/* Content */}
       {isLoading ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#ff7b00" />
@@ -251,8 +255,19 @@ export default function BookingsScreen() {
 }
 
 /* ---------------------------------- */
-/* CARD COMPONENTS (UNCHANGED)        */
+/* CARD COMPONENTS                    */
 /* ---------------------------------- */
+
+const ACCESS_THEME: Record<string, { accent: string; icon: string }> = {
+  gym: { accent: "#FF7A00", icon: "fitness-center" },
+  badminton: { accent: "#FFC107", icon: "sports-tennis" },
+  swimming: { accent: "#11C5FF", icon: "pool" },
+  pickleball: { accent: "#FF5A36", icon: "sports-tennis" },
+  football: { accent: "#45D61B", icon: "sports-soccer" },
+  yoga: { accent: "#B98CFF", icon: "self-improvement" },
+  health: { accent: "#B98CFF", icon: "favorite" },
+  default: { accent: "#8B5CF6", icon: "event" },
+};
 
 function BookingCard({
   data,
@@ -261,90 +276,227 @@ function BookingCard({
   onPrimaryPress,
   onSecondaryPress,
 }: any) {
+  const theme =
+    ACCESS_THEME[data.type?.toLowerCase()] ?? ACCESS_THEME.default;
+  const accent = theme.accent;
+
   return (
-    <View
-      className="mb-5 rounded-3xl 
-      bg-card-light dark:bg-card-dark 
-      border border-border-light dark:border-border-dark 
-      overflow-hidden"
+    <TouchableOpacity
+      activeOpacity={0.9}
+      style={{
+        width: "100%",
+        borderRadius: 16,
+        backgroundColor: "#0B0B0B",
+        borderWidth: 1,
+        borderColor: accent,
+        padding: 14,
+        marginBottom: 12,
+      }}
     >
-      <View className="flex-row gap-4 p-4">
-        <View className="w-24 h-24 rounded-2xl overflow-hidden mt-1">
-          <Image
-            source={{ uri: data.image }}
-            className="w-full h-full"
-            resizeMode="cover"
-          />
+      {/* Top row: sport | date | time */}
+      <View style={{ flexDirection: "row" }}>
+        {/* Sport */}
+        <View style={{ flex: 1.1, flexDirection: "row", alignItems: "center" }}>
+          <View
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 17,
+              borderWidth: 1.5,
+              borderColor: accent,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <MaterialIcons name={theme.icon as any} size={16} color={accent} />
+          </View>
+          <View style={{ marginLeft: 8, flexShrink: 1 }}>
+            <Text style={{ color: "#7D7D7D", fontSize: 9, letterSpacing: 0.4 }}>
+              SPORT
+            </Text>
+            <Text
+              style={{ color: "#FFF", fontSize: 13, fontWeight: "700",textTransform: "uppercase" }}
+              numberOfLines={1}
+            >
+              {data.type || "Session"}
+            </Text>
+          </View>
         </View>
 
-        <View className="flex-1 justify-between">
-          <View>
-            <Text className="text-base font-semibold text-text-primary-light dark:text-text-primary-dark">
-              {data.title}
-            </Text>
+        <View
+          style={{
+            width: 1,
+            backgroundColor: "rgba(255,255,255,.12)",
+            marginHorizontal: 10,
+          }}
+        />
 
-            <Text className="text-sm mt-0.5 text-text-secondary-light dark:text-text-secondary-dark">
-              {data.subtitle}
+        {/* Date */}
+        <View style={{ flex: 0.8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <MaterialIcons name="calendar-month" size={12} color={accent} />
+            <Text style={{ color: "#7D7D7D", fontSize: 9, letterSpacing: 0.4 }}>
+              DATE
             </Text>
-
-            <View className="mt-3 gap-2">
-              <InfoRow icon="calendar-today" text={data.date} />
-              <InfoRow icon="location-on" text={data.location} />
-            </View>
           </View>
+          <Text
+            style={{
+              color: "#FFF",
+              fontSize: 12,
+              fontWeight: "700",
+              marginTop: 2,
+            }}
+            numberOfLines={1}
+          >
+            {data.date}
+          </Text>
+          <Text style={{ color: "#7D7D7D", fontSize: 10 }}>{data.weekday}</Text>
+        </View>
+
+        <View
+          style={{
+            width: 1,
+            backgroundColor: "rgba(255,255,255,.12)",
+            marginHorizontal: 10,
+          }}
+        />
+
+        {/* Time */}
+        <View style={{ flex: 1.1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <MaterialIcons name="schedule" size={12} color={accent} />
+            <Text style={{ color: "#7D7D7D", fontSize: 9, letterSpacing: 0.4 }}>
+              TIME
+            </Text>
+          </View>
+          <Text
+            style={{
+              color: "#FFF",
+              fontSize: 11,
+              fontWeight: "700",
+              marginTop: 2,
+            }}
+            numberOfLines={1}
+          >
+            {data.timeRange}
+          </Text>
+          <Text style={{ color: "#7D7D7D", fontSize: 10 }}>
+            {data.duration} hrs
+          </Text>
         </View>
       </View>
 
-      {(primaryAction || secondaryAction) && (
-        <View className="flex-row gap-3 px-4 pb-4 border-t border-border-light dark:border-border-dark pt-3">
-          {secondaryAction && (
-            <ActionButton
-              text={secondaryAction}
-              variant="secondary"
-              onPress={onSecondaryPress}
-            />
-          )}
-          {primaryAction && (
-            <ActionButton
-              text={primaryAction}
-              variant="primary"
-              onPress={onPrimaryPress}
-            />
-          )}
+      <View
+        style={{
+          height: 1,
+          backgroundColor: "rgba(255,255,255,.12)",
+          marginVertical: 12,
+        }}
+      />
+
+      {/* Bottom row: venue | action button */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            flex: 1,
+            paddingRight: 8,
+          }}
+        >
+          <View
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 10,
+              borderWidth: 1.5,
+              borderColor: accent,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <MaterialIcons name="apartment" size={16} color={accent} />
+          </View>
+          <View style={{ marginLeft: 8, flexShrink: 1 }}>
+            <Text style={{ color: "#7D7D7D", fontSize: 9, letterSpacing: 0.4 }}>
+              VENUE
+            </Text>
+            <Text
+              style={{ color: "#FFF", fontSize: 13, fontWeight: "700" }}
+              numberOfLines={1}
+            >
+              {data.venue}
+            </Text>
+            {!!data.address && (
+              <Text
+                style={{ color: "#7D7D7D", fontSize: 10 }}
+                numberOfLines={1}
+              >
+                {data.address}
+              </Text>
+            )}
+          </View>
         </View>
-      )}
-    </View>
+
+        {(primaryAction || secondaryAction) && (
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {secondaryAction && (
+              <ActionButton
+                text={secondaryAction}
+                variant="secondary"
+                accent={accent}
+                onPress={onSecondaryPress}
+              />
+            )}
+
+            {primaryAction && (
+              <ActionButton
+                text={primaryAction}
+                variant="primary"
+                accent={accent}
+                onPress={onPrimaryPress}
+              />
+            )}
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
   );
 }
 
-function InfoRow({ icon, text }: any) {
-  return (
-    <View className="flex-row items-center gap-2">
-      <MaterialIcons name={icon} size={16} color="#FF9500" />
-      <Text className="text-sm text-text-secondary-light dark:text-text-secondary-dark">
-        {text}
-      </Text>
-    </View>
-  );
-}
-
-function ActionButton({ text, variant, onPress }: any) {
+function ActionButton({ text, variant, onPress, accent }: any) {
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.9}
-      className={`flex-1 py-2.5 items-center justify-center rounded-2xl ${
-        variant === "primary"
-          ? "bg-primary"
-          : "bg-card-light dark:bg-card-dark border border-gray-300 dark:border-gray-600"
-      }`}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        backgroundColor: variant === "primary" ? accent : "transparent",
+        borderWidth: variant === "secondary" ? 1 : 0,
+        borderColor: accent,
+        gap: 6,
+      }}
     >
+      {variant === "primary" && (
+        <MaterialIcons name="qr-code-2" size={14} color="#000" />
+      )}
       <Text
-        className={`text-sm font-semibold ${
-          variant === "primary"
-            ? "text-white"
-            : "text-text-primary-light dark:text-text-primary-dark"
-        }`}
+        style={{
+          fontSize: 12,
+          fontWeight: "800",
+          letterSpacing: 0.5,
+          color: variant === "primary" ? "#000" : accent,
+        }}
       >
         {text}
       </Text>

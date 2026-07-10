@@ -106,11 +106,6 @@ export default function AuthScreen() {
         fullName: backendUser.fullName,
         email: backendUser.email,
         role: backendUser.role,
-        tenants: backendUser.tenants.map((item: any) => ({
-          id: item.tenant.id,
-          Facility: item.tenant.Facility,
-          FacilityImage: item.tenant.FacilityImage,
-        })),
       });
 
       router.replace("/(tabs)/home");

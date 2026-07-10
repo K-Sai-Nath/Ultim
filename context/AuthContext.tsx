@@ -1,10 +1,6 @@
 import React, { createContext, useContext, useState } from "react";
 
-export type Tenant = {
-  id: number;
-  Facility: string;
-  FacilityImage: string | null;
-};
+
 
 export type User = {
   id: string;
@@ -12,7 +8,6 @@ export type User = {
   email: string;
   role: string;
   avatar?: string;
-  tenants?: Tenant[];
 };
 
 type AuthContextType = {

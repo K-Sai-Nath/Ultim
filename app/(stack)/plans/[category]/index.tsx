@@ -1,4 +1,4 @@
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import axios from "axios";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
@@ -6,55 +6,69 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   ImageBackground,
+  ImageSourcePropType,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 /* ---------------------------------- */
-/* MOCK PLANS                          */
+/* SPORT THEME CONFIG                  */
 /* ---------------------------------- */
+/* Each sport gets its own accent color, icon and a fallback hero image.
+   If the API returns `plan.image`, that is used instead of the fallback. */
 
-const plansMap: any = {
-  fitness: [
-    {
-      id: "1",
-      title: "Gym Monthly Plan",
-      credits: 100,
-      image: "https://images.unsplash.com/photo-1558611848-73f7eb4001a1",
-    },
-    {
-      id: "2",
-      title: "CrossFit Plan",
-      credits: 150,
-      image: "https://images.unsplash.com/photo-1517964603305-11c0f6f66012",
-    },
-  ],
-  sports: [
-    {
-      id: "3",
-      title: "Badminton Plan",
-      credits: 80,
-      image: "https://loremflickr.com/400/300/badminton",
-    },
-    {
-      id: "4",
-      title: "Swimming Plan",
-      credits: 120,
-      image: "https://images.unsplash.com/photo-1546519638-68e109498ffc",
-    },
-  ],
-  health: [
-    {
-      id: "5",
-      title: "Yoga Plan",
-      credits: 60,
-      image: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b",
-    },
-  ],
+const SPORT_THEME: Record<
+  string,
+  { accent: string; icon: any; fallbackImage: any }
+> = {
+  gym: {
+    accent: "#FF7A00",
+    icon: "dumbbell",
+    fallbackImage: require("../../../../assets/images/fitnessbg.png"),
+  },
+  fitness: {
+    accent: "#FF7A00",
+    icon: "dumbbell",
+    fallbackImage: require("../../../../assets/images/fitnessbg.png"),
+  },
+  pickleball: {
+    accent: "#FF5A36",
+    icon: "weight-lifter",
+    fallbackImage: require("../../../../assets/images/pickleballbg.png"),
+  },
+  badminton: {
+    accent: "#FFC107",
+    icon: "badminton",
+    fallbackImage: require("../../../../assets/images/batmintonbg.png"),
+  },
+  swimming: {
+    accent: "#11C5FF",
+    icon: "swim",
+    fallbackImage: require("../../../../assets/images/swimmingbg.png"),
+  },
+  football: {
+    accent: "#45D61B",
+    icon: "soccer",
+    fallbackImage: require("../../../../assets/images/fitness.png"),
+  },
+  yoga: {
+    accent: "#B98CFF",
+    icon: "yoga",
+    fallbackImage: require("../../../../assets/images/yoga.png"),
+  },
+  health: {
+    accent: "#B98CFF",
+    icon: "yoga",
+    fallbackImage: require("../../../../assets/images/yoga.png"),
+  },
+  default: {
+    accent: "#8B5CF6",
+    icon: "star-circle",
+    fallbackImage: require("../../../../assets/images/fitness.png"),
+  },
 };
 
 /* ---------------------------------- */
@@ -71,27 +85,27 @@ export default function PlansScreen() {
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  console.log(category, "category");
+
   useEffect(() => {
     if (!category) return;
 
     const fetchPlans = async () => {
       try {
         setLoading(true);
+        setError("");
         const res = await axios.get(
-  "https://ultim-server.vercel.app/api/membership-plans",
-  {
-    params: {
-      "where[category][equals]": category.trim(),
-    },
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-  }
-);
+          "https://ultim-server.vercel.app/api/membership-plans",
+          {
+            params: {
+              "where[category][equals]": category.trim(),
+            },
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+          }
+        );
         setPlans(res.data.docs);
-        console.log(res.data.docs, "plans");
       } catch (err) {
         setError("Failed to load plans");
       } finally {
@@ -110,7 +124,7 @@ export default function PlansScreen() {
         backgroundColor: isDark ? "#0f0f0f" : "#ffffff",
       }}
     >
-      {/* HEADER — SAME AS ACCESS SCREEN */}
+      {/* HEADER */}
       <View className="flex-row items-center px-4 py-3">
         <TouchableOpacity
           onPress={() => router.back()}
@@ -125,6 +139,7 @@ export default function PlansScreen() {
 
         <View className="w-10 h-10" />
       </View>
+
       {loading && (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#ff7b00" />
@@ -133,7 +148,8 @@ export default function PlansScreen() {
           </Text>
         </View>
       )}
-      {error !== "" && (
+
+      {!loading && error !== "" && (
         <View className="flex-1 justify-center items-center">
           <Text
             style={{
@@ -147,8 +163,7 @@ export default function PlansScreen() {
         </View>
       )}
 
-      {/* CONTENT */}
-      {!loading && !error && plans.length == 0 && (
+      {!loading && !error && plans.length === 0 && (
         <View className="flex-1 justify-center items-center">
           <MaterialIcons
             name="event-busy"
@@ -166,11 +181,12 @@ export default function PlansScreen() {
           </Text>
         </View>
       )}
+
       {!loading && !error && plans.length > 0 && (
         <ScrollView
           className="px-4"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={{ paddingTop: 4, paddingBottom: 24 }}
         >
           {plans.map((plan: any) => (
             <PlanRow
@@ -188,113 +204,213 @@ export default function PlansScreen() {
 }
 
 /* ---------------------------------- */
-/* COMPONENT                           */
+/* MEMBERSHIP CARD                     */
 /* ---------------------------------- */
 
 function PlanRow({ plan, onPress }: any) {
-  const membershipType = (plan.type ?? plan.sport ?? "gym").toString().toLowerCase();
-  const accentColors: Record<string, string> = {
-    gym: "#ff7a00",
-    badminton: "#f59e0b",
-    swimming: "#06b6d4",
-    football: "#16a34a",
-    default: "#8b5cf6",
-  };
+  const membershipType = (plan.type ?? plan.sport ?? "gym")
+    .toString()
+    .toLowerCase();
 
-  const backgroundImages: Record<string, string> = {
-    gym: "https://images.unsplash.com/photo-1554284126-aa88f22d8b72?auto=format&fit=crop&w=1200&q=80",
-    badminton: "https://images.unsplash.com/photo-1546483875-ad9014c88eba?auto=format&fit=crop&w=1200&q=80",
-    swimming: "https://images.unsplash.com/photo-1508609349937-5ec4ae374ebf?auto=format&fit=crop&w=1200&q=80",
-    football: "https://images.unsplash.com/photo-1505842465776-3d0036fbe0fe?auto=format&fit=crop&w=1200&q=80",
-    default: "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=1200&q=80",
-  };
+  const theme = SPORT_THEME[membershipType] ?? SPORT_THEME.default;
+  const accent = theme.accent;
+  const icon = theme.icon;
 
-  const accentColor = accentColors[membershipType] ?? accentColors.default;
-  const backgroundImage = backgroundImages[membershipType] ?? backgroundImages.default;
-  const facilityName = plan?.tenant?.Facility ?? "Facility Name";
-  const planName = plan.planName ?? plan.title ?? "Membership Plan";
-  const durationLabel = plan.Duration ? `${plan.Duration} Month${plan.Duration === 1 || plan.Duration === "1" ? "" : "s"}` : "TBD";
-  const priceLabel = plan.planPrice ? `₹${plan.planPrice}` : "Price TBD";
-  const creditsLabel = plan.creditsOffered ?? plan.credits ?? "--";
+  // Prefer the image coming from the API, fall back to a sport themed asset
+  const heroImageSource: ImageSourcePropType =
+    plan?.image && typeof plan.image === "string"
+      ? { uri: plan.image }
+      : theme.fallbackImage;
+  const facility = plan?.tenant?.Facility ?? "Facility";
+
+  const duration = `${plan.Duration} MONTH${
+    Number(plan.Duration) > 1 ? "S" : ""
+  }`;
 
   return (
-    <View
-      className="mb-5 overflow-hidden rounded-3xl"
-      style={{ aspectRatio: 3 / 2, backgroundColor: accentColor }}
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={onPress}
+      style={{
+        width: "100%",
+        aspectRatio: 3 / 2, // mobile-optimised: full width banner-style card
+        marginBottom: 16,
+        borderRadius: 26,
+        overflow: "hidden",
+        
+        borderWidth: 1,
+        borderColor: accent,
+
+        shadowColor: accent,
+        shadowOpacity: 0.45,
+        shadowRadius: 14,
+        shadowOffset: { width: 0, height: 0 },
+        elevation: 10,
+      }}
     >
       <ImageBackground
-        source={{ uri: backgroundImage }}
-        resizeMode="cover"
-        style={{ flex: 1 }}
-      >
-        <View style={StyleSheet.absoluteFillObject}>
-          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)" }} />
-        </View>
+  source={heroImageSource} // Change to your image path
+  resizeMode="cover"
+  style={{ flex: 1 }}
+>
+
+    
         <View
           style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 140,
-            backgroundColor: "rgba(0,0,0,0.22)",
+            flex: 1,
+            justifyContent: "space-between",
+            paddingHorizontal: 20,
+            paddingVertical: 18,
           }}
-        />
-
-        <View className="flex-1 p-5 justify-between">
-          <View>
+        >
+          {/* TOP: badge + title + duration */}
+          <View style={{ width: "58%" }}>
             <View
-              className="flex-row items-center justify-between rounded-full px-3 py-1 mb-3 bg-white/15"
-              style={{ alignSelf: "flex-start" }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                alignSelf: "flex-start",
+                borderWidth: 1.3,
+                borderColor: accent,
+                borderRadius: 12,
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                
+              }}
             >
-              <Text className="text-xs font-bold uppercase tracking-wide text-white">
+              <MaterialCommunityIcons name={icon} size={16} color={accent} />
+              <Text
+                style={{
+                  marginLeft: 7,
+                  color: accent,
+                  fontWeight: "900",
+                  fontSize: 12,
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                  fontStyle: "italic",
+                }}
+              >
                 {membershipType}
               </Text>
-              <Text className="ml-2 text-xs font-semibold uppercase tracking-wide text-white/80">
-                {durationLabel}
-              </Text>
             </View>
 
-            <Text className="text-3xl font-extrabold text-white leading-tight">
-              {facilityName}
+            <Text
+              numberOfLines={2}
+              style={{
+                   marginTop: 14,
+    color: accent,
+    fontWeight: "900",
+    fontSize: 24,
+    lineHeight: 27,
+    fontStyle: "italic",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+              }}
+            >
+              {facility}
             </Text>
 
-            <Text className="mt-3 text-lg font-semibold text-white/90">
-              {planName}
+            <Text
+              style={{
+                
+                marginTop: 8,
+                color: "white",
+                fontWeight: "900",
+                fontStyle: "italic",
+fontSize: 17,
+letterSpacing: 1,
+
+              }}
+            >
+              {duration}
             </Text>
+
+            <Text
+              style={{
+                marginTop: 2,
+                color: "#A8A8A8",
+                fontSize: 10,
+                letterSpacing: 4,
+                fontStyle: "italic",
+              }}
+            >
+              MEMBERSHIP
+            </Text>
+
+            <View
+              style={{
+                marginTop: 12,
+                width: 56,
+                height: 4,
+                borderRadius: 10,
+                backgroundColor: accent,
+              }}
+            />
           </View>
 
-          <View className="flex-row items-center justify-between mt-4">
-            <View>
-              <Text className="text-xs uppercase text-white/60">Price</Text>
-              <Text className="text-2xl font-bold text-white mt-1">{priceLabel}</Text>
-            </View>
-
-            <View className="items-end">
-              <Text className="text-xs uppercase text-white/60">Credits</Text>
-              <Text className="text-lg font-semibold text-white mt-1">{creditsLabel}</Text>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            onPress={onPress}
-            activeOpacity={0.85}
-            className="self-start rounded-full px-5 py-3 mt-4"
+          {/* BOTTOM: coins + price */}
+          <View
             style={{
-              backgroundColor: accentColor,
-              shadowColor: "#000",
-              shadowOpacity: 0.18,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 4 },
-              elevation: 4,
+              width: "58%",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
             }}
           >
-            <Text className="text-sm font-bold text-white tracking-wide">
-              View Plan
-            </Text>
-          </TouchableOpacity>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+          
+
+              <View style={{ marginLeft: 9 }}>
+                <Text style={{ color: "#BDBDBD", fontSize: 10, letterSpacing: 1,fontStyle: "italic", }}>
+                  EARN
+                </Text>
+                <Text
+                  style={{
+                    color: accent,
+                    fontWeight: "900",
+                    fontSize: 19,
+                    lineHeight: 21,
+                    fontStyle: "italic",
+                  }}
+                >
+                  {plan.creditsOffered}
+                </Text>
+                <Text style={{ color: "#BDBDBD", fontSize: 10, letterSpacing: 1,fontStyle: "italic" }}>
+                  CREDITS
+                </Text>
+              </View>
+            </View>
+
+            <View
+              style={{
+                width: 1,
+                height: 50,
+                backgroundColor: "#5F5F5F",
+                marginHorizontal: 10,
+              }}
+            />
+
+            <View>
+              <Text style={{ color: "#BDBDBD", fontSize: 10, letterSpacing: 1,fontStyle: "italic", }}>
+                PRICE
+              </Text>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={{
+                  marginTop: 2,
+                  color: accent,
+                  fontWeight: "900",
+                  fontSize: 24,
+                  fontStyle: "italic",
+                }}
+              >
+                ₹{plan.planPrice}
+              </Text>
+            </View>
+          </View>
         </View>
       </ImageBackground>
-    </View>
+    </TouchableOpacity>
   );
 }

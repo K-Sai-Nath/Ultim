@@ -4,7 +4,7 @@
     "slug": "Ultim",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/ULTIM.png",
+    "icon": "./assets/images/logo.jpeg",
     "scheme": "ultim",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -23,7 +23,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/ULTIM.png",
+      "favicon": "./assets/images/logo.jpeg",
       "bundler": "metro"
     },
     "plugins": [
@@ -31,13 +31,14 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/ULTIM.png",
+          "image": "./assets/images/logo.jpeg",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ff7b00"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
