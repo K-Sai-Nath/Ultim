@@ -101,14 +101,14 @@ export default function BookingsScreen() {
 
   const iconColor = isDark ? "#f5f5f5" : "#000";
 
-  // Formats a 24h "HH:mm" string to "h:mm AM/PM"
+  // Formats a 24h "HH:mm" string to a zero-padded 24h "HH:mm" string
   const formatTime = (time: string) => {
     const [hourStr, minuteStr] = time.split(":");
     const hour = parseInt(hourStr, 10);
     const minute = parseInt(minuteStr, 10);
-    const period = hour >= 12 ? "PM" : "AM";
-    const hour12 = hour % 12 === 0 ? 12 : hour % 12;
-    return `${hour12}:${minute.toString().padStart(2, "0")} ${period}`;
+    const hh = hour.toString().padStart(2, "0");
+    const mm = minute.toString().padStart(2, "0");
+    return `${hh}:${mm}`;
   };
 
   // Adds `duration` hours (can be fractional, e.g. 1.5) to a "HH:mm" start time
@@ -146,6 +146,10 @@ export default function BookingsScreen() {
           duration: item.duration,
           venue: item.tenant?.Facility,
           address: item.tenant?.address,
+          court:
+            typeof item.court === "string" && item.court.trim().length > 0
+              ? item.court.trim()
+              : null,
         }}
         primaryAction={activeTab === "upcoming" ? "View QR" : null}
         onPrimaryPress={() => router.push(`/(stack)/qr/${item.id}`)}
@@ -394,7 +398,7 @@ function BookingCard({
         }}
       />
 
-      {/* Bottom row: venue | action button */}
+      {/* Bottom row: venue | court | action button */}
       <View
         style={{
           flexDirection: "row",
@@ -444,8 +448,41 @@ function BookingCard({
           </View>
         </View>
 
+        {!!data.court && (
+          <>
+            <View
+              style={{
+                width: 1,
+                alignSelf: "stretch",
+                backgroundColor: "rgba(255,255,255,.12)",
+                marginHorizontal: 10,
+              }}
+            />
+
+            <View style={{ flex: 0.8 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <MaterialIcons name="sports-tennis" size={12} color={accent} />
+                <Text style={{ color: "#7D7D7D", fontSize: 9, letterSpacing: 0.4 }}>
+                  COURT
+                </Text>
+              </View>
+              <Text
+                style={{
+                  color: "#FFF",
+                  fontSize: 13,
+                  fontWeight: "700",
+                  marginTop: 2,
+                }}
+                numberOfLines={1}
+              >
+                {data.court}
+              </Text>
+            </View>
+          </>
+        )}
+
         {(primaryAction || secondaryAction) && (
-          <View style={{ flexDirection: "row", gap: 8 }}>
+          <View style={{ flexDirection: "row", gap: 8, marginLeft: 8 }}>
             {secondaryAction && (
               <ActionButton
                 text={secondaryAction}

@@ -20,19 +20,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 /* HELPERS                            */
 /* ---------------------------------- */
 const formatHour = (hourNumber: number) => {
-  const date = new Date();
-  
   // Extract hours and convert fractional hours (e.g., 0.5) cleanly into minutes
   const hours = Math.floor(hourNumber);
   const minutes = Math.round((hourNumber - hours) * 60);
-  
-  date.setHours(hours, minutes, 0, 0);
 
-  return date.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+  const hh = String(hours).padStart(2, "0");
+  const mm = String(minutes).padStart(2, "0");
+
+  return `${hh}:${mm}`;
 };
 
 const formatDay = (date: Date) =>
@@ -44,34 +39,15 @@ const formatDateMonth = (date: Date) =>
 const formatDateNumber = (date: Date) => date.getDate();
 
 /* ---------------------------------- */
-/* STATIC COURT DATA                  */
+/* COURT TYPES (dynamic, from plan)   */
 /* ---------------------------------- */
-const COURTS = [
-  { id: 1, name: "Court 1" },
-  { id: 2, name: "Court 2" },
-  { id: 3, name: "Court 3" },
-];
-
-const COURT_SPORT_TYPES = ["pickleball", "badminton", "gym"];
-
-const getCourtAvailability = (
-  hour: number | null,
-  dateIndex: number,
-): Record<number, boolean> => {
-  if (hour === null) {
-    return COURTS.reduce(
-      (acc, c) => ({ ...acc, [c.id]: true }),
-      {} as Record<number, boolean>,
-    );
-  }
-
-  const availability: Record<number, boolean> = {};
-  COURTS.forEach((court) => {
-    const seed = (hour + dateIndex + court.id) % 3;
-    availability[court.id] = seed !== 0; 
-  });
-  return availability;
+type Court = {
+  id: string;
+  name: string;
 };
+
+// Only these plan types show a court selector at all
+const COURT_SPORT_TYPES = ["pickleball", "badminton"];
 
 /* ---------------------------------- */
 /* SCREEN                             */
@@ -85,38 +61,79 @@ export default function SlotsScreen() {
   const { user } = useAuth();
   const [plan, setPlan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [planError, setPlanError] = useState<string | null>(null);
 
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
   const [selectedStartHour, setSelectedStartHour] = useState<number | null>(null);
   const [duration, setDuration] = useState(1);
-  const [selectedCourt, setSelectedCourt] = useState<number | null>(null);
+  const [selectedCourt, setSelectedCourt] = useState<string | null>(null);
   const [bookingLoading, setBookingLoading] = useState(false);
 
   /* ---------------------------------- */
   /* FETCH PLAN                         */
   /* ---------------------------------- */
-  useEffect(() => {
-    const fetchPlan = async () => {
-      try {
-        const token = await getAccessToken();
-        const res = await axios.get(
-          `https://ultim-server.vercel.app/api/memberships/${membershipId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        );
-        setPlan(res.data);
-      } catch (err) {
-        console.log("Plan fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchPlan = React.useCallback(async () => {
+    if (!membershipId) {
+      setPlanError("This booking link looks invalid. Please go back and try again.");
+      setLoading(false);
+      return;
+    }
 
-    if (membershipId) fetchPlan();
+    setLoading(true);
+    setPlanError(null);
+
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        setPlanError("Your session has expired. Please log in again.");
+        return;
+      }
+
+      const res = await axios.get(
+        `https://ultim-server.vercel.app/api/memberships/${membershipId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          timeout: 15000,
+        },
+      );
+
+      if (!res.data) {
+        setPlanError("We couldn't find this membership. Please try again.");
+        return;
+      }
+
+      setPlan(res.data);
+    } catch (err) {
+      console.log("Plan fetch error:", err);
+
+      if (axios.isAxiosError(err)) {
+        if (err.code === "ECONNABORTED") {
+          setPlanError("The request timed out. Check your connection and try again.");
+        } else if (!err.response) {
+          setPlanError("Unable to reach the server. Check your internet connection.");
+        } else if (err.response.status === 401) {
+          setPlanError("Your session has expired. Please log in again.");
+        } else if (err.response.status === 404) {
+          setPlanError("This membership plan could not be found.");
+        } else {
+          setPlanError(
+            err.response.data?.message ||
+              "Something went wrong while loading this plan. Please try again.",
+          );
+        }
+      } else {
+        setPlanError("Something went wrong. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
   }, [membershipId]);
+
+  useEffect(() => {
+    fetchPlan();
+  }, [fetchPlan]);
 
   /* ---------------------------------- */
   /* Generate 3 Dates (Logic Unchanged) */
@@ -135,15 +152,12 @@ export default function SlotsScreen() {
   const planType = (plan?.membershipPlan?.type || "").toLowerCase();
   const isCourtSport = COURT_SPORT_TYPES.includes(planType);
 
-  const courtAvailability = useMemo(
-    () => getCourtAvailability(selectedStartHour, selectedDateIndex),
-    [selectedStartHour, selectedDateIndex],
-  );
-
-  // Dynamic counter to show how many courts are available out of the total count
-  const availableCourtsCount = useMemo(() => {
-    return COURTS.filter(court => courtAvailability[court.id]).length;
-  }, [courtAvailability]);
+  /* ---------------------------------- */
+  /* Courts — now dynamic from the API  */
+  /* ---------------------------------- */
+  const courts: Court[] = useMemo(() => {
+    return plan?.membershipPlan?.courts || [];
+  }, [plan]);
 
   /* ---------------------------------- */
   /* Backend Slots                      */
@@ -180,7 +194,7 @@ export default function SlotsScreen() {
     if (isCourtSport && selectedCourt === null) return;
 
     const courtLabel = isCourtSport
-      ? `\nCourt: ${COURTS.find((c) => c.id === selectedCourt)?.name}`
+      ? `\nCourt: ${courts.find((c) => c.id === selectedCourt)?.name}`
       : "";
 
     Alert.alert(
@@ -195,8 +209,23 @@ export default function SlotsScreen() {
           onPress: async () => {
             try {
               setBookingLoading(true);
+
               const token = await getAccessToken();
-              if (!token) throw new Error("No token");
+              if (!token) {
+                Alert.alert(
+                  "Session Expired",
+                  "Please log in again to complete this booking.",
+                );
+                return;
+              }
+
+              if (!membershipId) {
+                Alert.alert(
+                  "Booking Failed ❌",
+                  "This booking session is invalid. Please go back and try again.",
+                );
+                return;
+              }
 
               await axios.post(
                 "https://ultim-server.vercel.app/api/bookings",
@@ -207,14 +236,18 @@ export default function SlotsScreen() {
                   sessionDate: selectedDate.toISOString(),
                   sessionTime: formatHour(selectedStartHour),
                   duration: duration,
-                  ...(isCourtSport ? { court: selectedCourt } : {}),
+                  ...(isCourtSport
+                    ? { court: courts.find((c) => c.id === selectedCourt)?.name }
+                    : {}),
                 },
                 {
                   headers: {
                     Authorization: `Bearer ${token}`,
                   },
+                  timeout: 15000,
                 },
               );
+
               queryClient.invalidateQueries({ queryKey: ["bookings"] });
               queryClient.invalidateQueries({ queryKey: ["plans"] });
               Alert.alert(
@@ -223,16 +256,34 @@ export default function SlotsScreen() {
               );
               router.back();
             } catch (error) {
+              let title = "Booking Failed ❌";
               let message = "Unable to complete booking. Please try again.";
+
               if (axios.isAxiosError(error)) {
-                const data = error.response?.data;
-                if (data?.errors && Array.isArray(data.errors)) {
-                  message = data.errors.map((e: any) => e.message).join("\n");
-                } else if (data?.message) {
-                  message = data.message;
+                if (error.code === "ECONNABORTED") {
+                  message = "The request timed out. Please check your connection and try again.";
+                } else if (!error.response) {
+                  message = "Unable to reach the server. Check your internet connection and try again.";
+                } else {
+                  const status = error.response.status;
+                  const data = error.response.data;
+
+                  if (status === 401) {
+                    title = "Session Expired";
+                    message = "Please log in again to complete this booking.";
+                  } else if (status === 409) {
+                    message = "This slot was just booked by someone else. Please pick another time or court.";
+                  } else if (data?.errors && Array.isArray(data.errors)) {
+                    message = data.errors.map((e: any) => e.message).join("\n");
+                  } else if (data?.message) {
+                    message = data.message;
+                  }
                 }
+              } else if (error instanceof Error) {
+                message = error.message;
               }
-              Alert.alert("Booking Failed ❌", message);
+
+              Alert.alert(title, message);
             } finally {
               setBookingLoading(false);
             }
@@ -242,11 +293,47 @@ export default function SlotsScreen() {
     );
   };
 
-  if (loading || !plan) {
+  if (loading) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-[#0d0d0d]">
         <ActivityIndicator size="large" color="#ff5500" />
         <Text className="mt-4 text-neutral-400 font-medium">Loading slots...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (planError || !plan) {
+    return (
+      <SafeAreaView className="flex-1 bg-[#0d0d0d]">
+        <View className="flex-row items-center px-4 py-3">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="w-10 h-10 items-center justify-center"
+          >
+            <MaterialIcons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
+        <View className="flex-1 items-center justify-center px-8">
+          <View className="w-16 h-16 rounded-full bg-neutral-900/80 items-center justify-center mb-4 border border-neutral-800">
+            <MaterialIcons name="error-outline" size={32} color="#ff5500" />
+          </View>
+          <Text className="text-white font-extrabold text-[16px] tracking-wide text-center">
+            Something Went Wrong
+          </Text>
+          <Text className="text-neutral-500 text-xs mt-1.5 text-center leading-relaxed">
+            {planError || "We couldn't load this membership plan. Please try again."}
+          </Text>
+
+          <TouchableOpacity
+            onPress={fetchPlan}
+            className="mt-6 h-12 px-8 rounded-xl items-center justify-center bg-[#ff5500]"
+          >
+            <Text className="font-extrabold text-sm text-black tracking-wide">
+              Try Again
+            </Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
@@ -320,7 +407,7 @@ export default function SlotsScreen() {
         {/* TIME & SLIDABLE TIMELINE SECTION */}
         {availableStartHours.length > 0 ? (
           <View className="px-4 mt-6">
-            <View className="flex-row items-center justify-between pb-4">
+            <View className="flex-row space-between justify-between pb-4">
               <Text className="text-[15px] font-bold text-white tracking-wide">
                 Available Times
               </Text>
@@ -328,7 +415,7 @@ export default function SlotsScreen() {
               <View className="flex-row items-center rounded-xl bg-[#161616] p-1 border border-neutral-800">
                 <TouchableOpacity
                   disabled={duration <= 1}
-                  onPress={() => setDuration(duration - 0.5)}
+                  onPress={() => setDuration(duration - 1)}
                   className="w-7 h-7 rounded-lg items-center justify-center bg-neutral-900"
                 >
                   <Text className="text-neutral-400 text-sm font-bold">−</Text>
@@ -340,7 +427,7 @@ export default function SlotsScreen() {
 
                 <TouchableOpacity
                   disabled={duration >= 2}
-                  onPress={() => setDuration(duration + 0.5)}
+                  onPress={() => setDuration(duration + 1)}
                   className="w-7 h-7 rounded-lg items-center justify-center bg-[#ff5500]"
                   style={{ opacity: duration >= 2 ? 0.4 : 1 }}
                 >
@@ -351,8 +438,8 @@ export default function SlotsScreen() {
 
             {/* SLIDABLE TIME BAR LIST */}
             <View className="bg-[#121212] rounded-xl py-4 border border-neutral-900">
-              <ScrollView 
-                horizontal 
+              <ScrollView
+                horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ paddingHorizontal: 12, gap: 8 }}
               >
@@ -366,7 +453,7 @@ export default function SlotsScreen() {
                         setSelectedStartHour(hour);
                         setSelectedCourt(null);
                       }}
-                      className="rounded-lg px-4 py-2 border items-center justify-center"
+                      className="rounded-lg px-4 py-2 border justify-center"
                       style={{
                         backgroundColor: selected ? "rgba(255,85,0,0.15)" : "#161616",
                         borderColor: selected ? "#ff5500" : "#262626",
@@ -411,63 +498,35 @@ export default function SlotsScreen() {
           </View>
         )}
 
-        {/* STATUS LEGEND INDICATORS */}
-        {isCourtSport && selectedStartHour !== null && (
-          <View className="flex-row items-center justify-center gap-5 mt-5">
-            <View className="flex-row items-center gap-1.5">
-              <View className="w-2 h-2 rounded-full bg-[#22c55e]" />
-              <Text className="text-[11px] font-semibold text-neutral-400">Available</Text>
-            </View>
-            <View className="flex-row items-center gap-1.5">
-              <View className="w-2 h-2 rounded-full bg-[#525252]" />
-              <Text className="text-[11px] font-semibold text-neutral-400">Unavailable</Text>
-            </View>
-          </View>
-        )}
-
         {/* COURT SELECTOR SECTION */}
-        {isCourtSport && selectedStartHour !== null && (
+        {isCourtSport && selectedStartHour !== null && courts.length > 0 && (
           <View className="px-4 mt-5">
-            <View className="flex-row items-center justify-between pb-3">
-              <Text className="text-[15px] font-bold text-white tracking-wide">
-                Available Courts
-              </Text>
-              
-              {/* COURT COUNT BADGE INDICATOR */}
-              <View className="bg-neutral-900 px-2.5 py-1 rounded-full border border-neutral-800">
-                <Text className="text-xs font-bold text-[#ff5500]">
-                  {availableCourtsCount} / {COURTS.length} Available
-                </Text>
-              </View>
-            </View>
+            <Text className="text-[15px] font-bold text-white tracking-wide pb-3">
+              Select Court
+            </Text>
 
             <View className="flex-row flex-wrap justify-between gap-y-3">
-              {COURTS.map((court) => {
-                const available = courtAvailability[court.id];
+              {courts.map((court) => {
                 const selected = selectedCourt === court.id;
 
                 // Determine appropriate sports icon type based on plan context
                 let sportIconName: keyof typeof MaterialIcons.glyphMap = "sports-tennis"; // Pickleball default
                 if (planType === "badminton") {
                   sportIconName = "sports-cricket"; // Clean generic racket representation
-                } else if (planType === "gym") {
-                  sportIconName = "fitness-center";
                 }
 
                 return (
                   <TouchableOpacity
                     key={court.id}
-                    disabled={!available}
                     onPress={() => setSelectedCourt(court.id)}
                     className="w-[48.5%]"
                   >
                     <View
-                      className="rounded-xl p-4 border relative items-center justify-center min-h-[130px]"
+                      className="rounded-xl p-4 border relative items-center justify-center min-h-[110px]"
                       style={{
                         backgroundColor: "#121212",
                         borderColor: selected ? "#ff5500" : "#1a1a1a",
                         borderWidth: selected ? 1.5 : 1,
-                        opacity: !available ? 0.4 : 1,
                       }}
                     >
                       {selected && (
@@ -476,33 +535,18 @@ export default function SlotsScreen() {
                         </View>
                       )}
 
-                      {/* NEW SPORT ICON DISPLAY */}
+                      {/* SPORT ICON DISPLAY */}
                       <View className="mb-2 w-8 h-8 rounded-full bg-neutral-900/60 items-center justify-center border border-neutral-800/80">
-                        <MaterialIcons 
-                          name={sportIconName} 
-                          size={16} 
-                          color={selected ? "#ff5500" : available ? "#737373" : "#404040"} 
+                        <MaterialIcons
+                          name={sportIconName}
+                          size={16}
+                          color={selected ? "#ff5500" : "#737373"}
                         />
                       </View>
 
                       <Text className="text-center font-bold text-base text-white">
                         {court.name}
                       </Text>
-
-                      <View className="items-center mt-2">
-                        <View className="flex-row items-center gap-1.5 justify-center">
-                          <View 
-                            className="w-1.5 h-1.5 rounded-full" 
-                            style={{ backgroundColor: available ? "#22c55e" : "#525252" }} 
-                          />
-                          <Text 
-                            className="text-[10px] font-bold tracking-wide uppercase" 
-                            style={{ color: available ? "#22c55e" : "#737373" }}
-                          >
-                            {available ? "Available" : "Unavailable"}
-                          </Text>
-                        </View>
-                      </View>
                     </View>
                   </TouchableOpacity>
                 );
@@ -517,12 +561,14 @@ export default function SlotsScreen() {
         <View className="absolute bottom-0 left-0 right-0 bg-[#0d0d0d] border-t border-neutral-900 px-4 pt-3 pb-6">
           <View className="bg-[#121212] rounded-xl border border-neutral-900 p-4 flex-row items-center mb-4">
             <View className="flex-1 flex-row flex-wrap">
-              <View className="w-1/2 mb-3">
-                <Text className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Court</Text>
-                <Text className="text-[13px] font-bold text-white mt-0.5">
-                  {COURTS.find((c) => c.id === selectedCourt)?.name || "Not Selected"}
-                </Text>
-              </View>
+              {isCourtSport && (
+                <View className="w-1/2 mb-3">
+                  <Text className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Court</Text>
+                  <Text className="text-[13px] font-bold text-white mt-0.5">
+                    {courts.find((c) => c.id === selectedCourt)?.name || "Not Selected"}
+                  </Text>
+                </View>
+              )}
 
               <View className="w-1/2 mb-3">
                 <Text className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Date</Text>
@@ -545,7 +591,7 @@ export default function SlotsScreen() {
             <View className="border-l border-neutral-800 pl-4 items-start justify-center">
               <Text className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Time</Text>
               <Text className="text-[13px] font-extrabold text-[#ff5500] mt-0.5">
-                {formatHour(selectedStartHour).split(" ")[0]} - {formatHour(endHour!).split(" ")[0]} {formatHour(endHour!).split(" ")[1]}
+                {formatHour(selectedStartHour)} - {formatHour(endHour!)}
               </Text>
             </View>
           </View>
