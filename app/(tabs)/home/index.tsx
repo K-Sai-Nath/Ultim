@@ -1,14 +1,15 @@
 import { useAuth } from "@/context/AuthContext";
 import { getAccessToken } from "@/services/authService";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useRouter } from "expo-router";
 import { useColorScheme } from "nativewind";
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  FlatList,
   Image,
   ImageBackground,
   ScrollView,
@@ -16,10 +17,33 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { SwiperFlatList } from "react-native-swiper-flatlist";
 
 const { width } = Dimensions.get("window");
+
+const CARD_WIDTH = width * 0.65;
+const CARD_GAP = 14;
+
+/* ---------------------------------- */
+/* SPORT THEME                          */
+/* ---------------------------------- */
+
+const ACCESS_THEME: Record<string, { accent: string; icon: string }> = {
+  gym: { accent: "#FF7A00", icon: "fitness-center" },
+  badminton: { accent: "#FFC107", icon: "sports-tennis" },
+  swimming: { accent: "#11C5FF", icon: "pool" },
+  pickleball: { accent: "#FF5A36", icon: "sports-tennis" },
+  football: { accent: "#45D61B", icon: "sports-soccer" },
+  yoga: { accent: "#B98CFF", icon: "self-improvement" },
+  health: { accent: "#B98CFF", icon: "favorite" },
+  default: { accent: "#8B5CF6", icon: "event" },
+};
+
+function getSportTheme(type: string) {
+  return ACCESS_THEME[type] ?? ACCESS_THEME.default;
+}
 
 /* ---------------------------------- */
 /* STATIC DATA                         */
@@ -107,6 +131,26 @@ const sportingEvents = [
 ];
 
 /* ---------------------------------- */
+/* BOOKING TIME HELPERS                */
+/* ---------------------------------- */
+
+// Given a booking, returns { start, end } Date objects for the session,
+// combining sessionDate (calendar day) + sessionTime (HH:mm) + duration (hours).
+function getSessionWindow(booking: any): { start: Date; end: Date } {
+  const date = new Date(booking.sessionDate);
+  const startHour = parseInt(booking.sessionTime?.split(":")[0] ?? "0", 10);
+  const startMinute = parseInt(booking.sessionTime?.split(":")[1] ?? "0", 10);
+
+  const start = new Date(date);
+  start.setHours(startHour, startMinute, 0, 0);
+
+  const end = new Date(start);
+  end.setHours(start.getHours() + (booking.duration || 1));
+
+  return { start, end };
+}
+
+/* ---------------------------------- */
 /* SCREEN                              */
 /* ---------------------------------- */
 
@@ -117,30 +161,13 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const isDark = colorScheme === "dark";
 
-  const getImageForType = (type: string) => {
-    switch (type) {
-      case "badminton":
-        return "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&w=800&q=80";
-      case "gym":
-        return "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80";
-      case "swimming":
-        return "https://images.unsplash.com/photo-1530549387789-4c1017266635?auto=format&fit=crop&w=800&q=80";
-      case "yoga":
-        return "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=800&q=80";
-      default:
-        return "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80";
-    }
-  };
-
   const fetchMemberships = async () => {
     const token = await getAccessToken();
     if (!token) throw new Error("No token");
 
     const res = await axios.get(
       "https://ultim-server.vercel.app/api/memberships",
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      },
+      { headers: { Authorization: `Bearer ${token}` } },
     );
 
     return res.data.docs || [];
@@ -152,9 +179,7 @@ export default function HomeScreen() {
 
     const res = await axios.get(
       "https://ultim-server.vercel.app/api/bookings",
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      },
+      { headers: { Authorization: `Bearer ${token}` } },
     );
 
     return res.data || [];
@@ -170,24 +195,33 @@ export default function HomeScreen() {
     queryKey: ["todayBookings"],
     queryFn: fetchTodayBookings,
     staleTime: 1000 * 60,
+    // Keep the "did this just end" check reasonably fresh
+    refetchInterval: 1000 * 60,
   });
 
   const today = new Date().toISOString().split("T")[0];
 
-  const todayBookingsList = (todayBookings?.docs ?? []).filter((b: any) =>
-    b.sessionDate?.startsWith(today),
-  );
+  // Show bookings that are today AND haven't ended more than 1 hour ago.
+  const sortedTodayBookings = useMemo(() => {
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
-  const gymMembership = memberships.find(
-    (m: any) => m.membershipPlan?.type === "gym",
-  );
+    const list = (todayBookings?.docs ?? []).filter((b: any) => {
+      if (!b.sessionDate?.startsWith(today)) return false;
+
+      const { end } = getSessionWindow(b);
+      return end.getTime() > oneHourAgo.getTime();
+    });
+
+    return list.sort((a: any, b: any) => {
+      const aTime = a.sessionTime ?? "00:00";
+      const bTime = b.sessionTime ?? "00:00";
+      return aTime.localeCompare(bTime);
+    });
+  }, [todayBookings, today]);
 
   const activeMemberships = memberships.filter(
     (m: any) => new Date(m.endDate) > new Date(),
-  );
-
-  const badmintonBooking = todayBookingsList.find(
-    (b: any) => b.membership?.membershipPlan?.type === "badminton",
   );
 
   return (
@@ -195,8 +229,6 @@ export default function HomeScreen() {
       edges={["left", "right", "bottom"]}
       className="flex-1 bg-background-light dark:bg-background-dark"
     >
-      
-
       <ScrollView
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
@@ -206,27 +238,22 @@ export default function HomeScreen() {
           style={{ paddingTop: insets.top + 2 }}
         >
           <View className="ml-3">
-          <Text className="text-lg font-bold text-white">
-            Welcome back, {user?.fullName}
-          </Text>
+            <Text className="text-lg font-bold text-white">
+              Welcome back, {user?.fullName}
+            </Text>
+          </View>
 
-        
+          <TouchableOpacity
+            onPress={() => router.push("/(stack)/notifications")}
+            className="w-10 h-10 rounded-full items-center justify-center bg-black/30 border border-white/25"
+          >
+            <MaterialIcons name="notifications" size={20} color="#fff" />
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          onPress={() => router.push("/(stack)/notifications")}
-          className="w-10 h-10 rounded-full items-center justify-center bg-black/30 border border-white/25"
-        >
-          <MaterialIcons
-            name="notifications"
-            size={20}
-            color="#fff"
-          />
-        </TouchableOpacity>
-      </View>
-      <BannerSlider />
+        <BannerSlider />
 
-      <SectionTitle title="Explore Categories" />
+        <SectionTitle title="Explore Categories" />
 
         <ScrollView
           horizontal
@@ -241,12 +268,10 @@ export default function HomeScreen() {
             image={require("../../../assets/images/fitness.png")}
             onPress={() => router.push("/(stack)/plans/fitness")}
           />
-
           <FitnessCard
             image={require("../../../assets/images/sports.png")}
             onPress={() => router.push("/(stack)/plans/sports")}
           />
-
           <FitnessCard
             image={require("../../../assets/images/health.png")}
             onPress={() => router.push("/(stack)/plans/health")}
@@ -255,7 +280,6 @@ export default function HomeScreen() {
 
         {/* COURTS */}
         <SectionTitle title="Courts Near You" />
-
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -272,278 +296,185 @@ export default function HomeScreen() {
 
         {/* SPORTING EVENTS */}
         <SectionTitle title="Sporting Events Near You" />
-
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16 }}
         >
           {sportingEvents.map((event) => (
-            <SportingEventCard
-              key={event.id}
-              event={event}
-              onPress={() => {}}
-            />
+            <SportingEventCard key={event.id} event={event} onPress={() => {}} />
           ))}
         </ScrollView>
 
-{/* MEMBERSHIP PLANS */}
-<View className="mt-10">
-  <View className="px-4 mb-5">
-    <Text className="text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">
-      Membership Plans
-    </Text>
-
-    <Text className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1">
-      Choose a plan that fits your fitness journey.
-    </Text>
-  </View>
-  
-  <ScrollView
-    horizontal
-    showsHorizontalScrollIndicator={false}
-    contentContainerStyle={{
-      paddingHorizontal: 16,
-      paddingBottom: 8,
-    }}
-  >
-    {[
-      {
-        title: "ULTIM 30",
-        image: require("../../../assets/images/Plan30.avif"),
-        oldPrice: "₹9,000",
-        price: "₹2,999",
-        credits: "4,000",
-        validity: "30 Days",
-      },
-      {
-        title: "ULTIM 90",
-        image: require("../../../assets/images/Plan90.avif"),
-        oldPrice: "₹27,000",
-        price: "₹7,999",
-        credits: "10,000",
-        validity: "90 Days",
-      },
-      {
-        title: "ULTIM 180",
-        image: require("../../../assets/images/Plan180.avif"),
-        oldPrice: "₹54,000",
-        price: "₹12,999",
-        credits: "18,000",
-        validity: "180 Days",
-      },
-      {
-        title: "ULTIM CIRCLE",
-        image: require("../../../assets/images/PlanCircle.avif"),
-        oldPrice: "₹1,08,000",
-        price: "₹17,999",
-        credits: "36,500",
-        validity: "365 Days",
-      },
-    ].map((plan) => (
-      <View
-        key={plan.title}
-        className="mr-4 rounded-3xl overflow-hidden bg-surface-light dark:bg-surface-dark"
-        style={{
-          width: 260,
-          borderWidth: 1,
-          borderColor: "rgba(255,122,0,0.22)",
-        }}
-      >
-        {/* IMAGE HEADER */}
-        <ImageBackground
-          source={plan.image}
-          style={{
-            height: 160,
-            justifyContent: "flex-end",
-          }}
-          imageStyle={{
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-          }}
-        >
-         <View
-  style={{
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.45)",
-  }}
-/>
-
-          <View
-            style={{
-              alignItems: "center",
-              paddingBottom: 18,
-            }}
-          >
-            <Text
-              style={{
-                color: "#fff",
-                fontSize: 14,
-                fontWeight: "700",
-                letterSpacing: 1,
-              }}
-            >
-              ULTIM
+        {/* MEMBERSHIP PLANS */}
+        <View className="mt-10">
+          <View className="px-4 mb-5">
+            <Text className="text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">
+              Membership Plans
             </Text>
-
-            <Text
-              style={{
-                color: "#fff",
-                fontWeight: "900",
-                fontSize:
-                  plan.title === "ULTIM CIRCLE" ? 30 : 42,
-              }}
-            >
-              {plan.title.replace("ULTIM ", "")}
+            <Text className="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1">
+              Choose a plan that fits your fitness journey.
             </Text>
           </View>
-        </ImageBackground>
 
-        {/* CONTENT */}
-        <View className="p-5">
-          <Text
-            style={{
-              color: "#9CA3AF",
-              textDecorationLine: "line-through",
-              fontSize: 16,
-            }}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 8 }}
           >
-            {plan.oldPrice}
-          </Text>
-
-          <Text
-            className="text-text-primary-light dark:text-text-primary-dark"
-            style={{
-              fontSize: 38,
-              fontWeight: "900",
-            }}
-          >
-            {plan.price}
-          </Text>
-
-          <Text
-            style={{
-              color: "#FF7A00",
-              fontSize: 16,
-              fontWeight: "700",
-              marginTop: 4,
-              marginBottom: 20,
-            }}
-          >
-            {plan.credits} Credits
-          </Text>
-
-          <View style={{ gap: 14 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "flex-start",
-              }}
-            >
+            {[
+              {
+                title: "ULTIM 30",
+                image: require("../../../assets/images/Plan30.avif"),
+                oldPrice: "₹9,000",
+                price: "₹2,999",
+                credits: "4,000",
+                validity: "30 Days",
+              },
+              {
+                title: "ULTIM 90",
+                image: require("../../../assets/images/Plan90.avif"),
+                oldPrice: "₹27,000",
+                price: "₹7,999",
+                credits: "10,000",
+                validity: "90 Days",
+              },
+              {
+                title: "ULTIM 180",
+                image: require("../../../assets/images/Plan180.avif"),
+                oldPrice: "₹54,000",
+                price: "₹12,999",
+                credits: "18,000",
+                validity: "180 Days",
+              },
+              {
+                title: "ULTIM CIRCLE",
+                image: require("../../../assets/images/PlanCircle.avif"),
+                oldPrice: "₹1,08,000",
+                price: "₹17,999",
+                credits: "36,500",
+                validity: "365 Days",
+              },
+            ].map((plan) => (
               <View
+                key={plan.title}
+                className="mr-4 rounded-3xl overflow-hidden bg-surface-light dark:bg-surface-dark"
                 style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: "#FF7A00",
-                  marginTop: 6,
-                  marginRight: 10,
+                  width: 260,
+                  borderWidth: 1,
+                  borderColor: "rgba(255,122,0,0.22)",
                 }}
-              />
-
-              <Text
-                className="flex-1 text-text-secondary-light dark:text-text-secondary-dark"
               >
-                {plan.credits} Ultim Credits
-              </Text>
-            </View>
+                <ImageBackground
+                  source={plan.image}
+                  style={{ height: 160, justifyContent: "flex-end" }}
+                  imageStyle={{ borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
+                >
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: "rgba(0,0,0,0.45)",
+                    }}
+                  />
+                  <View style={{ alignItems: "center", paddingBottom: 18 }}>
+                    <Text
+                      style={{
+                        color: "#fff",
+                        fontSize: 14,
+                        fontWeight: "700",
+                        letterSpacing: 1,
+                      }}
+                    >
+                      ULTIM
+                    </Text>
+                    <Text
+                      style={{
+                        color: "#fff",
+                        fontWeight: "900",
+                        fontSize: plan.title === "ULTIM CIRCLE" ? 30 : 42,
+                      }}
+                    >
+                      {plan.title.replace("ULTIM ", "")}
+                    </Text>
+                  </View>
+                </ImageBackground>
 
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "flex-start",
-              }}
-            >
-              <View
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: "#FF7A00",
-                  marginTop: 6,
-                  marginRight: 10,
-                }}
-              />
+                <View className="p-5">
+                  <Text
+                    style={{
+                      color: "#9CA3AF",
+                      textDecorationLine: "line-through",
+                      fontSize: 16,
+                    }}
+                  >
+                    {plan.oldPrice}
+                  </Text>
+                  <Text
+                    className="text-text-primary-light dark:text-text-primary-dark"
+                    style={{ fontSize: 38, fontWeight: "900" }}
+                  >
+                    {plan.price}
+                  </Text>
+                  <Text
+                    style={{
+                      color: "#FF7A00",
+                      fontSize: 16,
+                      fontWeight: "700",
+                      marginTop: 4,
+                      marginBottom: 20,
+                    }}
+                  >
+                    {plan.credits} Credits
+                  </Text>
 
-              <Text
-                className="flex-1 text-text-secondary-light dark:text-text-secondary-dark"
-              >
-                Guest access for your circle with the credits
-              </Text>
-            </View>
-
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "flex-start",
-              }}
-            >
-              <View
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: "#FF7A00",
-                  marginTop: 6,
-                  marginRight: 10,
-                }}
-              />
-
-              <Text
-                className="flex-1 text-text-secondary-light dark:text-text-secondary-dark"
-              >
-                {plan.validity} Credit Validity
-              </Text>
-            </View>
-          </View>
+                  <View style={{ gap: 14 }}>
+                    <PlanBullet text={`${plan.credits} Ultim Credits`} />
+                    <PlanBullet text="Guest access for your circle with the credits" />
+                    <PlanBullet text={`${plan.validity} Credit Validity`} />
+                  </View>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
         </View>
-      </View>
-    ))}
-  </ScrollView>
-</View>
-        {/* TODAY BOOKING */}
-        <View className="px-4 mt-10">
-          <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark mb-3 ml-1">
-            Today’s Booking
-          </Text>
+
+        {/* TODAY'S SPORT BOOKINGS */}
+        <View className="mt-10">
+          <View className="px-4 mb-3 flex-row items-center justify-between">
+            <View>
+              <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
+                Today's Sport Bookings
+              </Text>
+              <Text className="text-xs text-text-secondary-light dark:text-text-secondary-dark mt-1">
+                Scan at the venue to check-in
+              </Text>
+            </View>
+          </View>
 
           {bookingsLoading ? (
             <View className="py-10 items-center">
               <ActivityIndicator size="small" color="#FF9500" />
               <Text className="mt-3 text-text-secondary-light dark:text-text-secondary-dark">
-                Checking today’s bookings...
+                Checking today's bookings...
               </Text>
             </View>
-          ) : gymMembership || badmintonBooking ? (
-            <>
-              {gymMembership && (
-                <TodayBookingWithQRCard
-                  title="General Gym Session"
-                  location={gymMembership.tenant?.Facility ?? "Gym Facility"}
-                />
+          ) : sortedTodayBookings.length > 0 ? (
+            <FlatList
+              data={sortedTodayBookings}
+              keyExtractor={(item) => String(item.id)}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={CARD_WIDTH + CARD_GAP}
+              decelerationRate="fast"
+              contentContainerStyle={{ paddingHorizontal: 16 }}
+              renderItem={({ item, index }) => (
+                <TodayBookingCard booking={item} isNext={index === 0} />
               )}
-
-              {badmintonBooking && (
-                <TodayBookingWithQRCard
-                  title="Badminton Session"
-                  location={badmintonBooking.venue ?? "Badminton Court"}
-                />
-              )}
-            </>
+            />
           ) : (
             <View className="py-10 items-center">
               <MaterialIcons
@@ -576,6 +507,26 @@ function SectionTitle({ title }: { title: string }) {
   );
 }
 
+function PlanBullet({ text }: { text: string }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+      <View
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: "#FF7A00",
+          marginTop: 6,
+          marginRight: 10,
+        }}
+      />
+      <Text className="flex-1 text-text-secondary-light dark:text-text-secondary-dark">
+        {text}
+      </Text>
+    </View>
+  );
+}
+
 function BannerSlider() {
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -596,17 +547,12 @@ function BannerSlider() {
                 style={{ width: "100%", height: "100%" }}
                 resizeMode="cover"
               />
-
               <View className="absolute inset-0 bg-black/45" />
-
               <View className="absolute left-5 bottom-6 right-5">
                 <Text className="text-white text-3xl font-extrabold">
                   {item.title}
                 </Text>
-
-                <Text className="text-white/90 text-sm mt-2">
-                  {item.subtitle}
-                </Text>
+                <Text className="text-white/90 text-sm mt-2">{item.subtitle}</Text>
               </View>
             </View>
           </View>
@@ -630,7 +576,7 @@ function BannerSlider() {
   );
 }
 
-function FitnessCard({ title, image, onPress }: any) {
+function FitnessCard({ image, onPress }: any) {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -643,14 +589,7 @@ function FitnessCard({ title, image, onPress }: any) {
         borderColor: "rgba(255,122,0,0.18)",
       }}
     >
-      <Image
-        source={image}
-        style={{
-          width: "100%",
-          height: "100%",
-        }}
-        resizeMode="cover"
-      />
+      <Image source={image} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
     </TouchableOpacity>
   );
 }
@@ -662,12 +601,7 @@ function CourtCard({ court, onPress }: any) {
       activeOpacity={0.9}
       className="w-72 mr-4 rounded-xl overflow-hidden bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark"
     >
-      <Image
-        source={{ uri: court.image }}
-        className="w-full h-48"
-        resizeMode="cover"
-      />
-
+      <Image source={{ uri: court.image }} className="w-full h-48" resizeMode="cover" />
       <View className="p-4">
         <Text
           numberOfLines={2}
@@ -675,7 +609,6 @@ function CourtCard({ court, onPress }: any) {
         >
           {court.name}
         </Text>
-
         <View className="flex-row items-center mt-3">
           <MaterialIcons name="location-on" size={14} color="#FF9500" />
           <Text
@@ -697,12 +630,7 @@ function SportingEventCard({ event, onPress }: any) {
       activeOpacity={0.9}
       className="w-72 mr-4 rounded-xl overflow-hidden border border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark"
     >
-      <Image
-        source={{ uri: event.image }}
-        className="w-full h-48"
-        resizeMode="cover"
-      />
-
+      <Image source={{ uri: event.image }} className="w-full h-48" resizeMode="cover" />
       <View className="p-4">
         <Text
           numberOfLines={2}
@@ -710,7 +638,6 @@ function SportingEventCard({ event, onPress }: any) {
         >
           {event.title}
         </Text>
-
         <View className="flex-row items-center mt-2">
           <MaterialIcons name="location-on" size={14} color="#FF9500" />
           <Text
@@ -720,7 +647,6 @@ function SportingEventCard({ event, onPress }: any) {
             {event.venue}
           </Text>
         </View>
-
         <Text
           numberOfLines={1}
           className="mt-2 text-xs text-text-secondary-light dark:text-text-secondary-dark"
@@ -732,115 +658,172 @@ function SportingEventCard({ event, onPress }: any) {
   );
 }
 
-function TryNewCard({ title, venue, location, image, credits, onPress }: any) {
-  const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === "dark";
-
+function InfoRow({ icon, primary, secondary, accent }: any) {
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.9}
-      className="w-72 mr-5 mb-1 rounded-xl bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark overflow-hidden"
-    >
-      <Image
-        source={{ uri: image }}
-        className="w-full h-40"
-        resizeMode="cover"
-      />
-
-      <View className="p-4">
-        <Text className="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">
-          {title}
+    <View className="flex-row items-start">
+      <MaterialIcons name={icon} size={18} color={accent} style={{ marginTop: 2 }} />
+      <View className="ml-3 flex-1">
+        <Text className="text-sm font-semibold text-text-primary-light dark:text-text-primary-dark">
+          {primary}
         </Text>
-
-        <Text className="text-sm mt-1 text-text-secondary-light dark:text-text-secondary-dark">
-          {venue}
-        </Text>
-
-        <View className="flex-row items-center mt-1">
-          <MaterialIcons
-            name="location-on"
-            size={14}
-            color={isDark ? "#9CA3AF" : "#6B7280"}
-          />
-          <Text className="ml-1 text-xs text-text-secondary-light dark:text-text-secondary-dark">
-            {location}
+        {secondary ? (
+          <Text className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
+            {secondary}
           </Text>
-        </View>
-
-        <View className="flex-row items-center justify-between mt-4">
-          <Text className="text-sm font-semibold text-primary">
-            {credits} <Text className="text-xs font-medium">Credits</Text>
-          </Text>
-
-          <View className="px-5 py-2 rounded-full bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark">
-            <View className="flex-row items-center gap-1">
-              <Text className="text-sm font-medium text-text-primary-light dark:text-text-primary-dark">
-                Explore
-              </Text>
-
-              <Ionicons
-                name="arrow-forward"
-                size={16}
-                color={isDark ? "#F5F5F5" : "#111827"}
-              />
-            </View>
-          </View>
-        </View>
+        ) : null}
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 
-function TodayBookingWithQRCard({
-  title,
-  location,
-}: {
-  title: string;
-  location: string;
-}) {
-  return (
-    <View className="mb-6 rounded-xl overflow-hidden bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark">
-      {/* QR */}
-      <View className="items-center pt-7 pb-5">
-        <View className="p-3 rounded-xl bg-white">
-          <Image
-            source={{
-              uri: "https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=ultim-booking-checkin",
-            }}
-            className="w-48 h-48"
-            resizeMode="contain"
-          />
-        </View>
+/* ---------------------------------- */
+/* TODAY'S BOOKING CARD (LIVE QR)      */
+/* ---------------------------------- */
 
-        <Text className="mt-4 text-xs text-text-secondary-light dark:text-text-secondary-dark">
-          Scan this QR code at the venue
-        </Text>
+function TodayBookingCard({ booking, isNext }: { booking: any; isNext: boolean }) {
+  const [qrToken, setQrToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+    let active = true;
+
+    const generateQR = async () => {
+      try {
+        const token = await getAccessToken();
+        if (!token) return;
+
+        const res = await axios.post(
+          `https://ultim-server.vercel.app/api/bookings/${booking.id}/generate-qr`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+
+        if (active) setQrToken(res.data.token);
+      } catch (err) {
+        console.log("QR refresh error:", err);
+      }
+
+      timeout = setTimeout(generateQR, 15000);
+    };
+
+    generateQR();
+
+    return () => {
+      active = false;
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [booking.id]);
+
+  const type = booking.membership?.membershipPlan?.type ?? "default";
+  const theme = getSportTheme(type);
+  const title = type ? type.charAt(0).toUpperCase() + type.slice(1) : "Session";
+  const courtName = booking.court ?? "Court";
+  const facility = booking.tenant?.Facility ?? "Venue";
+  const city = booking.tenant?.city ?? "";
+
+  const { timeRange, dateLabel } = useMemo(() => {
+    const { start, end } = getSessionWindow(booking);
+
+    const dateLabel = start.toLocaleDateString(undefined, {
+      weekday: "long",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+
+    const formatTime = (d: Date) =>
+      d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+
+    return {
+      timeRange: `${formatTime(start)} - ${formatTime(end)}`,
+      dateLabel,
+    };
+  }, [booking]);
+
+  return (
+    <View
+      className="rounded-3xl overflow-hidden bg-card-light dark:bg-card-dark"
+      style={{
+        width: CARD_WIDTH,
+        marginRight: CARD_GAP,
+        borderWidth: 1.5,
+        borderColor: theme.accent,
+      }}
+    >
+      {isNext && (
+        <View className="items-center pt-4">
+          <View
+            style={{ backgroundColor: `${theme.accent}26` }}
+            className="px-4 py-1 rounded-full"
+          >
+            <Text
+              style={{ color: theme.accent }}
+              className="text-xs font-bold tracking-wider"
+            >
+              UP NEXT
+            </Text>
+          </View>
+        </View>
+      )}
+
+      <View className={`flex-row items-center px-5 ${isNext ? "pt-3" : "pt-5"}`}>
+        <View
+          style={{ backgroundColor: `${theme.accent}1A` }}
+          className="w-11 h-11 rounded-full items-center justify-center mr-3"
+        >
+          <MaterialIcons name={theme.icon as any} size={22} color={theme.accent} />
+        </View>
+        <View>
+          <Text className="text-lg font-bold text-text-primary-light dark:text-text-primary-dark">
+            {title}
+          </Text>
+          <Text className="text-xs text-text-secondary-light dark:text-text-secondary-dark">
+            {courtName}
+          </Text>
+        </View>
       </View>
 
-      <View className="h-px bg-border-light dark:bg-border-dark mx-5" />
+      <View className="px-5 py-5">
+  <View className="p-3 rounded-2xl bg-white self-start">
+    {qrToken ? (
+      <QRCode
+        value={qrToken}
+        size={190}
+        color="#000000"
+        backgroundColor="#FFFFFF"
+        ecl="H"
+        quietZone={2}
+      />
+    ) : (
+      <View
+        style={{ width: 190, height: 190 }}
+        className="items-center justify-center"
+      >
+        <ActivityIndicator size="small" color={theme.accent} />
+      </View>
+    )}
+  </View>
+</View>
 
-      {/* BOOKING DETAILS */}
-      <View className="items-center px-5 pt-5 pb-6">
-        <Text className="text-xl font-bold text-center text-text-primary-light dark:text-text-primary-dark">
-          {title}
-        </Text>
-
-        <View className="flex-row items-center justify-center mt-2">
-          <MaterialIcons name="location-on" size={16} color="#FF9500" />
-
-          <Text className="ml-1 text-sm text-text-secondary-light dark:text-text-secondary-dark">
-            {location}
-          </Text>
-        </View>
-
-        <View className="flex-row items-center mt-4 px-3 py-2 rounded-full bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark">
-          <View className="w-2 h-2 rounded-full bg-primary mr-2" />
-
-          <Text className="text-xs font-semibold tracking-wide text-text-primary-light dark:text-text-primary-dark">
-            BOOKING CONFIRMED
-          </Text>
-        </View>
+      <View className="px-5 pb-6" style={{ gap: 14 }}>
+        <InfoRow
+          icon="access-time"
+          primary={timeRange}
+          secondary={dateLabel}
+          accent={theme.accent}
+        />
+        <InfoRow
+          icon="location-on"
+          primary={facility}
+          secondary={city}
+          accent={theme.accent}
+        />
+        <InfoRow
+          icon="grid-view"
+          primary={courtName}
+          secondary="Court"
+          accent={theme.accent}
+        />
       </View>
     </View>
   );

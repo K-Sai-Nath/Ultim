@@ -235,7 +235,7 @@ export default function SlotsScreen() {
                   membership: Number(membershipId),
                   sessionDate: selectedDate.toISOString(),
                   sessionTime: formatHour(selectedStartHour),
-                  duration: duration,
+                  duration: duration*60,
                   ...(isCourtSport
                     ? { court: courts.find((c) => c.id === selectedCourt)?.name }
                     : {}),

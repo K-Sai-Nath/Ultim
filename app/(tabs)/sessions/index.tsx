@@ -14,11 +14,26 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+type TabKey = "upcoming" | "ongoing" | "past";
+
+// Computes the start & end Date objects for a booking's session.
+// duration is treated as MINUTES.
+const getSessionBounds = (b: any): { start: Date; end: Date } => {
+  const start = new Date(b.sessionDate);
+  const [hourStr, minuteStr] = (b.sessionTime || "0:0").split(":");
+  start.setHours(parseInt(hourStr, 10) || 0, parseInt(minuteStr, 10) || 0, 0, 0);
+
+  const end = new Date(start);
+  end.setMinutes(end.getMinutes() + Math.round(b.duration || 0));
+
+  return { start, end };
+};
+
 export default function BookingsScreen() {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
-  const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
+  const [activeTab, setActiveTab] = useState<TabKey>("upcoming");
 
   const fetchBookings = async ({ pageParam = 1 }: { pageParam?: number }) => {
     try {
@@ -65,6 +80,8 @@ export default function BookingsScreen() {
     initialPageParam: 1,
     getNextPageParam: (lastPage) => lastPage.nextPage,
     staleTime: 1000 * 60 * 5,
+    // Keep upcoming/ongoing/past buckets fresh as time passes
+    refetchInterval: 1000 * 60,
   });
 
   const bookings = data?.pages.flatMap((page) => page.docs) || [];
@@ -73,29 +90,35 @@ export default function BookingsScreen() {
 
   const upcoming = useMemo(() => {
     return bookings.filter((b: any) => {
-      const datePart = new Date(b.sessionDate);
-      const [hour, minute] = b.sessionTime.split(":");
-      datePart.setHours(parseInt(hour));
-      datePart.setMinutes(parseInt(minute));
-      return datePart >= now;
+      const { start } = getSessionBounds(b);
+      return start > now;
+    });
+  }, [bookings]);
+
+  const ongoing = useMemo(() => {
+    return bookings.filter((b: any) => {
+      const { start, end } = getSessionBounds(b);
+      return start <= now && end >= now;
     });
   }, [bookings]);
 
   const past = useMemo(() => {
     return bookings.filter((b: any) => {
-      const datePart = new Date(b.sessionDate);
-      const [hour, minute] = b.sessionTime.split(":");
-      datePart.setHours(parseInt(hour));
-      datePart.setMinutes(parseInt(minute));
-      return datePart < now;
+      const { end } = getSessionBounds(b);
+      return end < now;
     });
   }, [bookings]);
 
-  const filteredData = activeTab === "upcoming" ? upcoming : past;
+  const filteredData =
+    activeTab === "upcoming" ? upcoming : activeTab === "ongoing" ? ongoing : past;
+
   const emptyStateMessage =
     activeTab === "upcoming"
       ? "No upcoming bookings found"
+      : activeTab === "ongoing"
+      ? "No ongoing sessions right now"
       : "No past bookings found";
+
   const errorMessage =
     error instanceof Error ? error.message : "Failed to load bookings.";
 
@@ -111,13 +134,13 @@ export default function BookingsScreen() {
     return `${hh}:${mm}`;
   };
 
-  // Adds `duration` hours (can be fractional, e.g. 1.5) to a "HH:mm" start time
+  // Adds `duration` MINUTES to a "HH:mm" start time
   const addDuration = (time: string, duration: number) => {
     const [hourStr, minuteStr] = time.split(":");
     const start = new Date();
     start.setHours(parseInt(hourStr, 10));
     start.setMinutes(parseInt(minuteStr, 10));
-    start.setMinutes(start.getMinutes() + Math.round((duration || 0) * 60));
+    start.setMinutes(start.getMinutes() + Math.round(duration || 0));
     const hh = start.getHours().toString().padStart(2, "0");
     const mm = start.getMinutes().toString().padStart(2, "0");
     return `${hh}:${mm}`;
@@ -136,6 +159,10 @@ export default function BookingsScreen() {
 
     const membershipType = item.membership?.membershipPlan?.type;
 
+    // Both upcoming and ongoing sessions need the QR — upcoming to check in,
+    // ongoing to check out / re-enter.
+    const showQr = activeTab === "upcoming" || activeTab === "ongoing";
+
     return (
       <BookingCard
         data={{
@@ -150,8 +177,9 @@ export default function BookingsScreen() {
             typeof item.court === "string" && item.court.trim().length > 0
               ? item.court.trim()
               : null,
+          isOngoing: activeTab === "ongoing",
         }}
-        primaryAction={activeTab === "upcoming" ? "View QR" : null}
+        primaryAction={showQr ? "View QR" : null}
         onPrimaryPress={() => router.push(`/(stack)/qr/${item.id}`)}
       />
     );
@@ -180,10 +208,10 @@ export default function BookingsScreen() {
       </View>
 
       <View className="flex-row border-b border-border-light dark:border-border-dark">
-        {["upcoming", "past"].map((tab) => (
+        {(["upcoming", "ongoing", "past"] as TabKey[]).map((tab) => (
           <TouchableOpacity
             key={tab}
-            onPress={() => setActiveTab(tab as any)}
+            onPress={() => setActiveTab(tab)}
             className={`flex-1 items-center py-3 border-b-2 ${
               activeTab === tab ? "border-primary" : "border-transparent"
             }`}
@@ -195,7 +223,11 @@ export default function BookingsScreen() {
                   : "text-text-secondary-light dark:text-text-secondary-dark"
               }`}
             >
-              {tab === "upcoming" ? "Upcoming" : "Past"}
+              {tab === "upcoming"
+                ? "Upcoming"
+                : tab === "ongoing"
+                ? "Ongoing"
+                : "Past"}
             </Text>
           </TouchableOpacity>
         ))}
@@ -385,7 +417,7 @@ function BookingCard({
             {data.timeRange}
           </Text>
           <Text style={{ color: "#7D7D7D", fontSize: 10 }}>
-            {data.duration} hrs
+            {(data.duration / 60).toFixed(1).replace(/\.0$/, "")} hrs
           </Text>
         </View>
       </View>
