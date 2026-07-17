@@ -23,7 +23,7 @@ import { SwiperFlatList } from "react-native-swiper-flatlist";
 
 const { width } = Dimensions.get("window");
 
-const CARD_WIDTH = width * 0.65;
+const CARD_WIDTH = width * 0.70;
 const CARD_GAP = 14;
 
 /* ---------------------------------- */
@@ -145,7 +145,7 @@ function getSessionWindow(booking: any): { start: Date; end: Date } {
   start.setHours(startHour, startMinute, 0, 0);
 
   const end = new Date(start);
-  end.setHours(start.getHours() + (booking.duration || 1));
+  end.setHours(start.getHours() + (booking.duration/60 || 1));
 
   return { start, end };
 }

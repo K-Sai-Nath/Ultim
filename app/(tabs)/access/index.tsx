@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Image,
   ImageSourcePropType,
+  RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -37,7 +38,7 @@ export default function AccessScreen() {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
-
+const [refreshing, setRefreshing] = useState(false);
   const iconColor = isDark ? "#f5f5f5" : "#000";
 
   const [memberships, setMemberships] = useState<Membership[]>([]);
@@ -47,7 +48,18 @@ export default function AccessScreen() {
   /* ---------------------------------- */
   /* FETCH MEMBERSHIPS                  */
   /* ---------------------------------- */
+const onRefresh = async () => {
+  setRefreshing(true);
 
+  try {
+    const data = await fetchMemberships();
+    setMemberships(data);
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setRefreshing(false);
+  }
+};
   const fetchMemberships = async () => {
     const token = await getAccessToken();
     if (!token) throw new Error("No token");
@@ -172,6 +184,14 @@ export default function AccessScreen() {
 
       {/* Content */}
       <ScrollView
+  refreshControl={
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      tintColor="#FF9500"
+      colors={["#FF9500"]}
+    />
+  }
   showsVerticalScrollIndicator={false}
   contentContainerStyle={{ paddingBottom: 100 }}
   className="px-4"
